@@ -25,8 +25,8 @@ ENDIF()
 FIND_PACKAGE(Boost ${BOOST_VERSION} REQUIRED COMPONENTS
                filesystem )
 
-INCLUDE_DIRECTORIES( ${INCLUDE_DIRECTORIES} "${SEDEENSDK_INCLUDE_DIR}" "${BOOST_ROOT}")
-LINK_DIRECTORIES( ${LINK_DIRECTORIES} "${SEDEENSDK_LIBRARY_DIR}" "${BOOST_ROOT}/stage/lib")
+INCLUDE_DIRECTORIES( ${INCLUDE_DIRECTORIES} ${SEDEENSDK_INCLUDE_DIR} ${BOOST_ROOT})
+LINK_DIRECTORIES( ${LINK_DIRECTORIES} ${SEDEENSDK_LIBRARY_DIR} "${BOOST_ROOT}/stage/lib")
 
 # Build the code into a module library --- we'll link the kernel in soon, but we'll leave it in its source repo
 #ADD_LIBRARY( ${PROJECT_NAME} MODULE ${PROJECT_NAME}.cpp ${PROJECT_NAME}.h ColorDeconvolutionKernel.cpp ColorDeconvolutionKernel.h)
