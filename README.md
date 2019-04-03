@@ -1,12 +1,12 @@
-<h1 align="center">Stain Vectors From ROI Plugin</h1>
-This is a Sedeen plugin to select stained regions using ROIs, and generate stain vector files from them.
+<h1 align="center">Create Stain Vector Profile Plugin</h1>
+This is a Sedeen plugin to select stained regions, and generate stain vector profiles from them.
 
 ## User Manual
 
 Pending.
 
 ## Authors
-Stain Analysis Plugin was developed by **Michael Schumaker and Azadeh Yazanpanah**, Anne Martel's lab at Sunnybrook Research Institute (SRI), University of Toronto and was partially funded by an NIH grant.
+Create Stain Vector Profile was developed by **Michael Schumaker and Azadeh Yazanpanah**, Anne Martel's lab at Sunnybrook Research Institute (SRI), University of Toronto and was partially funded by an NIH grant.
 
 ## Copyright & License
 
