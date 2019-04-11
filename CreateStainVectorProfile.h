@@ -1,23 +1,44 @@
-/*=========================================================================
+/*=============================================================================
  *
  *  Copyright (c) 2019 Sunnybrook Research Institute
  *
- *  License terms pending.
+ *  Permission is hereby granted, free of charge, to any person obtaining a copy
+ *  of this software and associated documentation files (the "Software"), to deal
+ *  in the Software without restriction, including without limitation the rights
+ *  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ *  copies of the Software, and to permit persons to whom the Software is
+ *  furnished to do so, subject to the following conditions:
  *
- *=========================================================================*/
+ *  The above copyright notice and this permission notice shall be included in all
+ *  copies or substantial portions of the Software.
+ *
+ *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ *  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ *  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ *  SOFTWARE.
+ *
+ *=============================================================================*/
 
 #ifndef SEDEEN_SRC_PLUGINS_CREATESTAINVECTORPROFILE_CREATESTAINVECTORPROFILE_H
 #define SEDEEN_SRC_PLUGINS_CREATESTAINVECTORPROFILE_CREATESTAINVECTORPROFILE_H
 
- // Sedeen headers
+// Sedeen headers
 #include "algorithm/AlgorithmBase.h"
 #include "algorithm/Parameters.h"
 #include "algorithm/Results.h"
-//#include "ColorDeconvolutionKernel.h"
 
 #include <omp.h>
 #include <Windows.h>
 #include <fstream>
+#include <memory>
+
+// Plugin headers
+//#include "ColorDeconvolutionKernel.h"
+#include "StainProfile.h"
+//#include "FileDialogHandling.h"
 
 namespace sedeen {
 namespace tile {
@@ -36,12 +57,12 @@ public:
     virtual ~CreateStainVectorProfile();
 
 private:
-    // virtual function
+    // virtual functions
     virtual void run();
     virtual void init(const image::ImageHandle& image);
 
     //Member methods
-    std::string openFile(std::string path);
+    //inline std::string openFile(std::string path) {};
 
     ///Define the save file dialog options outside of init
     sedeen::file::FileDialogOptions defineSaveFileDialogOptions();
@@ -71,8 +92,14 @@ private:
 private:
     //Member variables
     std::vector<std::string> m_numComponentsOptions;
-    std::vector<std::string> m_separationAlgorithmOptions;
     std::vector<std::string> m_stainToDisplayOptions;
+
+    ///The stain vector profile and its XML file handling
+    std::shared_ptr<StainProfile> m_localStainProfile;
+    ///Returns the shared_ptr to the local stain profile
+    inline std::shared_ptr<StainProfile> GetLocalStainProfile() { return m_localStainProfile; }
+
+
 
 //I don't know how many of these will end up being used.
     //std::string m_path_to_root;
