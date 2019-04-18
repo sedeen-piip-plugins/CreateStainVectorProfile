@@ -46,7 +46,7 @@ private:
     virtual void init(const image::ImageHandle& image);
 
     //Member methods
-    inline std::string openFile(std::string path) {};
+    //inline std::string openFile(std::string path) {};
 
     ///Define the save file dialog options outside of init
     sedeen::file::FileDialogOptions defineSaveFileDialogOptions();
@@ -78,8 +78,11 @@ private:
     std::vector<std::string> m_numComponentsOptions;
     std::vector<std::string> m_stainToDisplayOptions;
 
-    ///The stain vector profile and its file handling
+    ///The stain vector profile and its XML file handling
     std::shared_ptr<StainProfile> m_localStainProfile;
+    ///Returns the shared_ptr to the local stain profile
+    inline std::shared_ptr<StainProfile> GetLocalStainProfile() { return m_localStainProfile; }
+
 
 
 //I don't know how many of these will end up being used.

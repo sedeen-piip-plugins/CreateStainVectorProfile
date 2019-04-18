@@ -12,17 +12,22 @@
 #include <string>
 #include <vector>
 #include <array>
-#include <stdexcept>
-#include <algorithm>
-#include <cmath>
-#include <numeric>
+#include <memory>
+
+//TinyXML2 system for XML handling
+#include <tinyxml2.h>
+//Macro to exit from a method/function if an XML operation was unsuccessful
+#ifndef XMLCheckResult
+    #define XMLCheckResult(a_eResult) if (a_eResult != tinyxml2::XML_SUCCESS) { return a_eResult; }
+#endif
 
 ///Class to read and write stain vector profile data to XML files. 
-///Avoids invoking the Sedeen SDK. Uses Poco for XML file interactions
-class StainProfile
+///Avoids invoking the Sedeen SDK. Uses TinyXML2 for XML file interactions.
+///Stores data in the member XMLDocument structure
+class StainProfile 
 {
 public:
-    ///No-parameter constructor
+    ///No-parameter constructor (builds XMLDocument structure)
     StainProfile();
     ///virtual destructor
     virtual ~StainProfile();
@@ -87,10 +92,10 @@ public:
     //Check if the file exists, and accessible for reading or writing, depending on the second argument
     bool checkFile(std::string, std::string);
 
-    ///If file is able to be opened, write the current stain profile to file as XML
-    bool writeStainProfileToFile(std::string);
-    ///If file is able to be opened, read from an XML file and fill variables in this class
-    bool readStainProfileFromFile(std::string);
+    ///Public-facing write method - returns true/false for success/failure
+    bool writeStainProfile(std::string);
+    ///Public-facing read method - checks file existence first, returns true/false for success/failure
+    bool readStainProfile(std::string);
 
     ///Request the list of possible stain separation algorithm names from the class
     std::vector<std::string> GetStainSeparationAlgorithmOptions();
@@ -98,22 +103,51 @@ public:
     ///Request an element of the vector of stain separation algorithms. Returns "" on error.
     std::string GetStainSeparationAlgorithmName(int);
 
+public:
+    ///Convert stain vector in decimal format to three-word hex colour format (as string)
+    template<class Ty, std::size_t N> std::string StainVectorToHexString(std::array<Ty, N>);
+    ///Convert three-word hex colour format (as string) to stain vector in decimal format
+    template<class Ty, std::size_t N> std::array<Ty, N> HexStringToStainVector(std::string);
+
+public:
+    //XML tag strings
+    //The root tag and one attribute
+    static inline const char* rootTag() { return "stain-profile"; }
+    static inline const char* nameOfStainProfileAttribute() { return "profile-name"; }
+    //The components tag and one attribute
+    static inline const char* componentsTag() { return "components"; }
+    static inline const char* numberOfStainsAttribute() { return "num-stains"; }
+    //The stain tag and two attributes
+    static inline const char* stainTag() { return "stain"; }
+    static inline const char* indexOfStainAttribute() { return "index"; }
+    static inline const char* nameOfStainAttribute() { return "stain-name"; }
+    //The stain value tag and one attribute
+    static inline const char* stainValueTag() { return "stain-value"; }
+    static inline const char* valueTypeAttribute() { return "value-type"; }
+    //The algorithm tag and one attribute
+    static inline const char* algorithmTag() { return "algorithm"; }
+    static inline const char* algorithmNameAttribute() { return "alg-name"; }
+    //The parameter tag and one attribute
+    static inline const char* parameterTag() { return "parameter"; }
+    static inline const char* parameterTypeAttribute() { return "param-type"; }
+
+
 private:
-    ///Keep local data private
-    std::string m_nameOfStainProfile;
-    int m_numberOfStainComponents;
-    std::string m_nameOfStainOne;
-    std::string m_nameOfStainTwo;
-    std::string m_nameOfStainThree;
-    std::string m_stainSeparationAlgorithm;
+    ///Build the XMLDocument data structure
+    bool BuildXMLDocument();
+    ///Check if the basic structure of the XMLDocument has been assembled
+    bool CheckXMLDocument(tinyxml2::XMLDocument*);
+    ///Clear a stain XMLElement that already exists, or return failure if the structure is incomplete
+    //bool ClearStainXMLElement(tinyxml2::XMLElement*);
+    ///Check whether the stain XMLElement substructure is complete, return true on yes, false on no.
+    bool CheckStainXMLElementStructure(tinyxml2::XMLElement*);
+    ///Populate values in a stain XMLElement
+    bool FillStainXMLElement(tinyxml2::XMLElement*, int, std::string, std::array<double, 3>);
 
-    //Assign the RGB values after processing
-    std::array<double, 3> m_stainOneRGB;
-    std::array<double, 3> m_stainTwoRGB;
-    std::array<double, 3> m_stainThreeRGB;
-
-    ///Store the list of possible stain separation algorithm names here
-    std::vector<std::string> m_stainSeparationAlgorithmOptions;
+    ///If file is able to be opened, write the current stain profile to file as XML
+    tinyxml2::XMLError writeStainProfileToXML(std::string);
+    ///If file is able to be opened, read from an XML file and fill variables in this class
+    tinyxml2::XMLError readStainProfileFromXML(std::string);
 
 
 private:
@@ -121,6 +155,29 @@ private:
     template<class Ty, std::size_t N> std::array<Ty, N> NormalizeArray(std::array<Ty, N>);
     ///Calculate the norm of all the elements in a container, where each element is of type Ty
     template<typename Iter_T, class Ty> Ty Norm(Iter_T first, Iter_T last);
+
+
+
+private:
+    ///Store the list of possible stain separation algorithm names here
+    std::vector<std::string> m_stainSeparationAlgorithmOptions;
+
+    ///An XML document associated with this class: note that elements can't be smartpointers
+    std::shared_ptr<tinyxml2::XMLDocument> m_xmlDoc;
+    ///Get pointer to the member m_xmlDoc
+    inline std::shared_ptr<tinyxml2::XMLDocument> GetXMLDoc() { return m_xmlDoc; }
+    ///root element: cannot be a smartpointer because destructor is private and XMLDocument must handle memory management
+    tinyxml2::XMLElement* m_rootElement;
+    ///components element
+    tinyxml2::XMLElement* m_componentsElement;
+    ///stain elements
+    tinyxml2::XMLElement* m_stainOneElement;
+    tinyxml2::XMLElement* m_stainTwoElement;
+    tinyxml2::XMLElement* m_stainThreeElement;
+    ///algorithm element
+    tinyxml2::XMLElement* m_algorithmElement;
+    ///parameter element
+    tinyxml2::XMLElement* m_parameterElement;
 
 };
 

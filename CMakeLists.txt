@@ -17,13 +17,28 @@ FIND_PACKAGE( SEDEENSDK REQUIRED
 
 # The ColorDeconvolutionKernel depends on boost.filesystem
 IF(NOT BOOST_ROOT)
-  SET(BOOST_ROOT "BOOST_ROOT-NOTFOUND" CACHE PATH "Preferred installation prefix of the Boost C++ library")
+  SET(BOOST_ROOT "BOOST_ROOT-NOTFOUND" CACHE PATH "Installation prefix of the Boost C++ libraries")
 ENDIF()
 IF(NOT BOOST_VERSION)
   SET(BOOST_VERSION "BOOST_VERSION-NOTFOUND" CACHE STRING "Boost library version number")
 ENDIF()
 FIND_PACKAGE(Boost ${BOOST_VERSION} REQUIRED COMPONENTS
                  filesystem )
+
+#Get components of Poco that weren't included in the Sedeen SDK
+#IF(NOT Poco_DIR)
+#  SET(Poco_DIR "POCO_ROOT-NOTFOUND" CACHE PATH "Installation prefix of the Poco C++ libraries")
+#ENDIF()
+#FIND_PACKAGE(Poco REQUIRED Foundation XML)
+
+#Inlude TinyXML2 for XML file reading and writing
+IF(NOT TinyXML2_INCLUDE_DIR)
+  SET(TinyXML2_INCLUDE_DIR "TinyXML2_INCLUDE_DIR-NOTFOUND" CACHE PATH "Location of include files for TinyXML2")
+ENDIF()
+IF(NOT TinyXML2_LIB_DIR)
+  SET(TinyXML2_LIB_DIR "TinyXML2_LIB_DIR-NOTFOUND" CACHE PATH "Location of library files for TinyXML2")
+ENDIF()
+FIND_PACKAGE(TinyXML2)
 
 # Name of the directory for files from external sources (change this to the binary dir, and set up a git fetch command)
 SET(EXTERNAL_SOURCES_DIR "${CMAKE_CURRENT_BINARY_DIR}/external-sources")
@@ -34,8 +49,8 @@ CONFIGURE_FILE(StainProfile.h ${EXTERNAL_SOURCES_DIR}/StainProfile.h COPYONLY)
 CONFIGURE_FILE(StainProfile.cpp ${EXTERNAL_SOURCES_DIR}/StainProfile.cpp COPYONLY)
 CONFIGURE_FILE(FileDialogHandling.h ${EXTERNAL_SOURCES_DIR}/FileDialogHandling.h COPYONLY)
 
-INCLUDE_DIRECTORIES( ${INCLUDE_DIRECTORIES} ${SEDEENSDK_INCLUDE_DIR} ${BOOST_ROOT})
-LINK_DIRECTORIES( ${LINK_DIRECTORIES} ${SEDEENSDK_LIBRARY_DIR} "${BOOST_ROOT}/stage/lib")
+INCLUDE_DIRECTORIES( ${INCLUDE_DIRECTORIES} ${SEDEENSDK_INCLUDE_DIR} ${BOOST_ROOT} ${TinyXML2_INCLUDE_DIR})
+LINK_DIRECTORIES( ${LINK_DIRECTORIES} ${SEDEENSDK_LIBRARY_DIR} "${BOOST_ROOT}/stage/lib" ${TinyXML2_LIB_DIR}) 
 
 # Build the code into a module library --- we'll link the kernel in soon, but we'll leave it in its source repo
 #ADD_LIBRARY( ${PROJECT_NAME} MODULE ${PROJECT_NAME}.cpp ${PROJECT_NAME}.h ColorDeconvolutionKernel.cpp ColorDeconvolutionKernel.h)
@@ -49,7 +64,8 @@ ADD_LIBRARY( ${PROJECT_NAME} MODULE
 
 # Link the library against the Sedeen SDK libraries
 TARGET_LINK_LIBRARIES( ${PROJECT_NAME} ${SEDEENSDK_LIBRARIES}
-                           Boost::filesystem )
+                           Boost::filesystem 
+                           TinyXML2 )
 
 #Create or update the .info file in the build directory
 STRING( TIMESTAMP DATE_CREATED_TEXT "%Y-%m-%d" )
@@ -73,3 +89,10 @@ IF( ${SEDEEN_FOUND} )
   install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.info"
       DESTINATION "${PLUGIN_DESTINATION_DIR}")
 ENDIF()
+
+#Shows all variables and their values
+#get_cmake_property(_variableNames VARIABLES)
+#list (SORT _variableNames)
+#foreach (_variableName ${_variableNames})
+#    message(STATUS "${_variableName}=${${_variableName}}")
+#endforeach()

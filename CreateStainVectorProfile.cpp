@@ -29,8 +29,6 @@
 
 // Poco header for manifest declaration
 #include <Poco/ClassLibrary.h>
-//Poco headers for Events
-
 
 // Declare that this object has AlgorithmBase subclasses
 //  and declare each of those sub-classes
@@ -60,6 +58,7 @@ CreateStainVectorProfile::CreateStainVectorProfile()
     m_stainToDisplayOptions()
 {
     //Define the numberOfStainComponents options
+    //TEMP: rely on the text and the index being the same
     m_numComponentsOptions.push_back("0");
     m_numComponentsOptions.push_back("1");
     m_numComponentsOptions.push_back("2");
@@ -124,11 +123,9 @@ void CreateStainVectorProfile::init(const image::ImageHandle& image) {
         "Choose which of the defined stains to preview in the display area", 0, m_stainToDisplayOptions, false);
  
     //Allow the user to create visible output, without saving the stain vector profile to a file
-    //m_showPreviewOnly = createMYBoolParameter(*this, "Preview Only",
     m_showPreviewOnly = createBoolParameter(*this, "Preview Only",
         "If set to Preview Only, clicking Run will create separated images, but will not save the vectors to file",
         true, false);
-
 
     //Allow the user to choose where to save the new stain vector profile
     sedeen::file::FileDialogOptions saveFileDialogOptions = defineSaveFileDialogOptions();
@@ -177,7 +174,7 @@ void CreateStainVectorProfile::run() {
     */
 
     //std::string outFileName = m_saveFileAs;
-    //bool fileNameIsValid = m_localStainProfile->checkFile(m_saveFileAs);
+    //bool fileNameIsValid = this->GetLocalStainProfile()->checkFile(m_saveFileAs);
 
 
     //If m_showPreviewOnly is false, assign new values to m_localStainProfile
@@ -213,8 +210,11 @@ void CreateStainVectorProfile::run() {
 
 
         //Write to some kind of temp file!
-        bool writeSuccessful = m_localStainProfile->writeStainProfileToFile("temp");
+        bool writeSuccessful = m_localStainProfile->writeStainProfile("temp");
 
+        //Make a new temporary stain profile
+        std::shared_ptr<StainProfile> readBack = std::make_shared<StainProfile>();
+        bool readSuccessful = readBack->readStainProfile("temp");
 
     }
 
@@ -264,6 +264,8 @@ std::string CreateStainVectorProfile::openFile(std::string path)
     return ofn.lpstrFile;
 }//end openFile
 */
+
+
 
 } // namespace algorithm
 } // namespace sedeen
