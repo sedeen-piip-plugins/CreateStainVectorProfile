@@ -52,14 +52,11 @@ CONFIGURE_FILE(FileDialogHandling.h ${EXTERNAL_SOURCES_DIR}/FileDialogHandling.h
 INCLUDE_DIRECTORIES( ${INCLUDE_DIRECTORIES} ${SEDEENSDK_INCLUDE_DIR} ${BOOST_ROOT} ${TinyXML2_INCLUDE_DIR})
 LINK_DIRECTORIES( ${LINK_DIRECTORIES} ${SEDEENSDK_LIBRARY_DIR} "${BOOST_ROOT}/stage/lib" ${TinyXML2_LIB_DIR}) 
 
-# Build the code into a module library --- we'll link the kernel in soon, but we'll leave it in its source repo
-#ADD_LIBRARY( ${PROJECT_NAME} MODULE ${PROJECT_NAME}.cpp ${PROJECT_NAME}.h ColorDeconvolutionKernel.cpp ColorDeconvolutionKernel.h)
-
 ADD_LIBRARY( ${PROJECT_NAME} MODULE 
                  ${PROJECT_NAME}.cpp ${PROJECT_NAME}.h 
                  ${EXTERNAL_SOURCES_DIR}/StainProfile.h ${EXTERNAL_SOURCES_DIR}/StainProfile.cpp 
                  ${EXTERNAL_SOURCES_DIR}/FileDialogHandling.h
-                 #ColorDeconvolutionKernel.cpp ColorDeconvolutionKernel.h
+                 #${EXTERNAL_SOURCES_DIR}/ColorDeconvolutionKernel.cpp ${EXTERNAL_SOURCES_DIR}/ColorDeconvolutionKernel.h
                  )
 
 # Link the library against the Sedeen SDK libraries
