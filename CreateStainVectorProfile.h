@@ -36,9 +36,8 @@
 #include <memory>
 
 // Plugin headers
-//#include "ColorDeconvolutionKernel.h"
+#include "ColorDeconvolutionKernel.h"
 #include "StainProfile.h"
-//#include "FileDialogHandling.h"
 
 namespace sedeen {
 namespace tile {
@@ -61,11 +60,25 @@ private:
     virtual void run();
     virtual void init(const image::ImageHandle& image);
 
-    //Member methods
-    //inline std::string openFile(std::string path) {};
-
     ///Define the save file dialog options outside of init
     sedeen::file::FileDialogOptions defineSaveFileDialogOptions();
+
+	/// Creates the Color Deconvolution pipeline with a cache
+	//
+	/// \return 
+	/// TRUE if successful, false on error or failure
+	bool buildPipeline(std::shared_ptr<StainProfile>);
+    /// Test whether the values or states of the UI parameters have changed
+    bool checkParametersChanged(bool);
+
+	///Create a text report that combines the output of the stain profile and any other reports
+	std::string generateCompleteReport() const;
+	///Create a text report summarizing the stain vector profile
+	std::string generateStainProfileReport(std::shared_ptr<StainProfile>) const;
+
+    ///Save the stain profile as defined in the parameters to the file in the save file dialog
+    bool SaveStainProfileToFile();
+
 
 private:
     //Member parameters
@@ -73,15 +86,19 @@ private:
     TextFieldParameter m_nameOfStainProfile;
     OptionParameter m_numberOfStainComponents;
 
+	//TODO: switch from single region per stain to multiple (RegionListParameter)
     //Stain One
     TextFieldParameter m_nameOfStainOne;
-    RegionListParameter m_regionListStainOne;
+    //RegionListParameter m_regionListStainOne;
+	GraphicItemParameter m_regionStainOne;
     //Stain Two
     TextFieldParameter m_nameOfStainTwo;
-    RegionListParameter m_regionListStainTwo;
+    //RegionListParameter m_regionListStainTwo;
+	GraphicItemParameter m_regionStainTwo;
     //Stain Three
     TextFieldParameter m_nameOfStainThree;
-    RegionListParameter m_regionListStainThree;
+    //RegionListParameter m_regionListStainThree;
+	GraphicItemParameter m_regionStainThree;
 
     OptionParameter m_stainSeparationAlgorithm;
     OptionParameter m_stainToDisplay;
@@ -89,8 +106,20 @@ private:
 
     SaveFileDialogParameter m_saveFileAs;
 
+	/// The output result
+	ImageResult m_result;
+	TextResult m_outputText;
+	std::string m_report;
+
+	/// The intermediate image factory after color deconvolution
+	std::shared_ptr<image::tile::Factory> m_colorDeconvolution_factory;
+
+	///User-selected regions of interest - also have individual pointers, so don't need?
+	//std::vector<algorithm::GraphicItemParameter> m_regionsOfInterest;
+
 private:
     //Member variables
+	std::vector<std::string> m_separationAlgorithmOptions;
     std::vector<std::string> m_numComponentsOptions;
     std::vector<std::string> m_stainToDisplayOptions;
 
@@ -98,36 +127,6 @@ private:
     std::shared_ptr<StainProfile> m_localStainProfile;
     ///Returns the shared_ptr to the local stain profile
     inline std::shared_ptr<StainProfile> GetLocalStainProfile() { return m_localStainProfile; }
-
-
-
-//I don't know how many of these will end up being used.
-    //std::string m_path_to_root;
-    //std::string m_path_to_stainfile;
-
-    //algorithm::DisplayAreaParameter m_display_area;
-    //algorithm::OptionParameter m_retainment;
-    //algorithm::OptionParameter m_displayOptions;
-    /// Parameter for selecting threshold retainment 
-    //algorithm::OptionParameter m_behavior;
-    /// User defined Threshold value.
-    //algorithm::DoubleParameter m_threshold;
-    /// The output result
-    //algorithm::ImageResult m_result;
-    //algorithm::TextResult m_output_text;
-    //std::string m_report;
-    /// Parameter for selecting which of the intermediate result to display
-    //algorithm::OptionParameter m_output_option;
-    /// User region of interest
-    //std::vector<algorithm::GraphicItemParameter> m_region_interest;
-    //algorithm::GraphicItemParameter m_regionToProcess;
-
-    /// The intermediate image factory after color deconvolution
-    //std::shared_ptr<image::tile::Factory> m_colorDeconvolution_factory;
-
-    /// The intermediate image factory after thresholding
-    //std::shared_ptr<image::tile::Factory> m_threshold_factory;
-    //std::ofstream log_file;
 
 };
 

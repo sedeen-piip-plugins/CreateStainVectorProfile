@@ -61,17 +61,19 @@ CreateStainVectorProfile::CreateStainVectorProfile()
     m_nameOfStainProfile(),
     m_numberOfStainComponents(),
     m_nameOfStainOne(),
-    m_regionListStainOne(),
+    m_regionStainOne(),
     m_nameOfStainTwo(),
-    m_regionListStainTwo(),
+    m_regionStainTwo(),
     m_nameOfStainThree(),
-    m_regionListStainThree(),
+    m_regionStainThree(),
     m_stainSeparationAlgorithm(),
     m_stainToDisplay(),
     m_showPreviewOnly(),
     m_saveFileAs(),
-    m_numComponentsOptions(),
-    m_stainToDisplayOptions()
+	m_result(),
+	m_outputText(),
+	m_report(""),
+	m_colorDeconvolution_factory(nullptr)
 {
     //Define the numberOfStainComponents options
     //TEMP: rely on the text and the index being the same
@@ -79,6 +81,9 @@ CreateStainVectorProfile::CreateStainVectorProfile()
     m_numComponentsOptions.push_back("1");
     m_numComponentsOptions.push_back("2");
     m_numComponentsOptions.push_back("3");
+
+	//Define the list of available stain separation algorithms
+	m_separationAlgorithmOptions.push_back("Ruifrok+Johnston Deconvolution");
 
     //Define the default list of names of stains to display
     m_stainToDisplayOptions.push_back("Stain 1");
@@ -114,25 +119,32 @@ void CreateStainVectorProfile::init(const image::ImageHandle& image) {
     //Names of stains and ROIs associated with them
     m_nameOfStainOne = createTextFieldParameter(*this, "Name of Stain 1",
         "Enter the name of a stain in the image", "", true);
-    m_regionListStainOne = createRegionListParameter(*this, "Stain 1 Regions", 
-        "List of Regions of Interest for Stain 1", true);
+    //m_regionListStainOne = createRegionListParameter(*this, "Stain 1 Regions", 
+    //    "List of Regions of Interest for Stain 1", true);
+	m_regionStainOne = createGraphicItemParameter(*this, "Stain 1 Region",
+		"Region of Interest for Stain 1", true);
 
     m_nameOfStainTwo = createTextFieldParameter(*this, "Name of Stain 2",
         "Enter the name of a stain in the image", "", true);
-    m_regionListStainTwo = createRegionListParameter(*this, "Stain 2 Regions", 
-        "List of Regions of Interest for Stain 2", true);
+    //m_regionListStainTwo = createRegionListParameter(*this, "Stain 2 Regions", 
+    //    "List of Regions of Interest for Stain 2", true);
+	m_regionStainTwo = createGraphicItemParameter(*this, "Stain 2 Region",
+		"Region of Interest for Stain 2", true);
 
     m_nameOfStainThree = createTextFieldParameter(*this, "Name of Stain 3",
         "Enter the name of a stain in the image", "", true);
-    m_regionListStainThree = createRegionListParameter(*this, "Stain 3 Regions", 
-        "List of Regions of Interest for Stain 3", true);
+    //m_regionListStainThree = createRegionListParameter(*this, "Stain 3 Regions", 
+    //    "List of Regions of Interest for Stain 3", true);
+	m_regionStainThree = createGraphicItemParameter(*this, "Stain 3 Region",
+		"Region of Interest for Stain 3", true);
 
-    //Get the list of available stain separation algorithms from the stain profile object
-    std::vector<std::string> theStainSeparationOptions 
-        = m_localStainProfile->GetStainSeparationAlgorithmOptions();
-    m_stainSeparationAlgorithm = createOptionParameter(*this, "Stain Separation Algorithm", 
+	//Get the list of available stain separation algorithms from a temp StainProfile object
+	auto tempStainProfile = std::make_shared<StainProfile>();
+	std::vector<std::string> tempStainSeparationOptions = tempStainProfile->GetStainSeparationAlgorithmOptions();
+	tempStainProfile.reset();
+	m_stainSeparationAlgorithm = createOptionParameter(*this, "Stain Separation Algorithm",
         "Select the stain separation algorithm to use to separate the stain components", 0, 
-        theStainSeparationOptions, false);
+        tempStainSeparationOptions, false);
 
     //List of options of the stains currently defined, to show in preview
     m_stainToDisplay = createOptionParameter(*this, "Show Separated Stain", 
@@ -149,10 +161,80 @@ void CreateStainVectorProfile::init(const image::ImageHandle& image) {
         "Choose where to save the stain vector profile. If Preview Only is checked, the profile will not be saved.",
         saveFileDialogOptions, true);
 
-    //Further initial configuration settings
-    //... stuff.
+    // Bind result
+    m_outputText = createTextResult(*this, "Text Result");
+    m_result = createImageResult(*this, " StainAnalysisResult");
 
 }//end init
+
+///Method called when the 'Run' button is clicked
+void CreateStainVectorProfile::run() {
+    //Get the reference to the localStainProfile
+    auto theProfile = this->GetLocalStainProfile();
+
+	// Has display area changed
+	bool display_changed = m_displayArea.isChanged();
+    //Have the states of the many parameters changed
+    bool parameters_changed = checkParametersChanged(false);
+
+	// Update results
+	if (parameters_changed || display_changed) {
+        //Clear the values in the StainProfile
+        theProfile->ClearXMLDocument();
+        //Assign values from the parameters to the local stain profile object
+        //Take advantage of the implicit conversion operators in the parameter definitions
+        theProfile->SetNameOfStainProfile(m_nameOfStainProfile);
+        theProfile->SetNumberOfStainComponents(m_numberOfStainComponents);
+        theProfile->SetNameOfStainOne(m_nameOfStainOne);
+        theProfile->SetNameOfStainTwo(m_nameOfStainTwo);
+        theProfile->SetNameOfStainThree(m_nameOfStainThree);
+        //The implicit conversion for m_stainSeparationAlgorithm is an int of the option number
+        //Get the text of the name of the stain separation algorithm from the vector
+        //of names stored in the localStainProfile
+        int stainAlgNumber = m_stainSeparationAlgorithm;
+        std::string stainAlgName = theProfile->GetStainSeparationAlgorithmName(stainAlgNumber);
+        theProfile->SetNameOfStainSeparationAlgorithm(stainAlgName);
+
+        //Calculate the stain vectors and build the operational pipeline
+        bool buildSuccessful = buildPipeline(theProfile);
+        if (!buildSuccessful) {
+            m_outputText.sendText("Could not calculate the stain vectors. Please check your regions of interest and try again.");
+            return;
+        }
+
+        //Update the display area with the deconvolution output
+        if (nullptr != m_colorDeconvolution_factory) {
+            m_result.update(m_colorDeconvolution_factory, m_displayArea, *this);
+        }
+
+        // Update the output text report
+        if (false == askedToStop()) {
+            auto report = generateCompleteReport();
+            m_outputText.sendText(report); 
+        }
+
+        //Determine if this is a preview only run, or if an output file should be written
+        if (m_showPreviewOnly == false) {
+            //Send the contents of the localStainProfile to the given file
+            bool saveResult = SaveStainProfileToFile();
+
+            //Check whether saving to the file was successful
+            if (!saveResult) {
+                m_outputText.sendText("Could not save the stain profile to the chosen file. Verify that the file name is correct, and try again.");
+                return;
+            }
+        }
+        else { //m_showPreviewOnly == true
+            //do nothing 
+        }
+	}//end if (pipeline_changed || display_changed)
+
+    // Ensure we run again after an abort
+    // a small kludge that causes buildPipeline() to return TRUE
+    if (askedToStop() && (nullptr != m_colorDeconvolution_factory)) {
+        m_colorDeconvolution_factory.reset();
+    }
+}//end run
 
 ///Define the save file dialog options outside of init
 sedeen::file::FileDialogOptions CreateStainVectorProfile::defineSaveFileDialogOptions() {
@@ -168,122 +250,228 @@ sedeen::file::FileDialogOptions CreateStainVectorProfile::defineSaveFileDialogOp
     return theOptions;
 }//end defineSaveFileDialogOptions
 
-
-
-///Method called when the 'Run' button is clicked
-void CreateStainVectorProfile::run() {
-
-    /*
-    //Determine if this is a preview only run, or if an output file should be written
-    if (m_showPreviewOnly == false) {
-
-
-
-    }
-    else if (m_showPreviewOnly == true) {
-
-
+bool CreateStainVectorProfile::SaveStainProfileToFile() {
+    //Get the full path file name from the file dialog parameter
+    sedeen::algorithm::parameter::SaveFileDialog::DataType fileDialogDataType = this->m_saveFileAs;
+    std::string theFile = fileDialogDataType.getFilename();
+    //Does it exist or can it be created, and can it be written to?
+    if (StainProfile::checkFile(theFile, "w")) {
+        m_localStainProfile->writeStainProfile(theFile);
+        return true;
     }
     else {
-        //Indeterminate state. Throw error or do nothing. TBD.
+        return false;
     }
-    */
+    return false;
+}//end SaveStainProfileToFile
 
-    //std::string outFileName = m_saveFileAs;
-    //bool fileNameIsValid = this->GetLocalStainProfile()->checkFile(m_saveFileAs);
-
-
-    //If m_showPreviewOnly is false, assign new values to m_localStainProfile
-    //if (m_showPreviewOnly == false) {
-
-
-    //TEMP!!!!
-    if (true) {
-        //Assign values from the parameters to the local stain profile object
-        //Take advantage of the implicit conversion operators in the parameter definitions
-        m_localStainProfile->SetNameOfStainProfile(m_nameOfStainProfile);
-        m_localStainProfile->SetNumberOfStainComponents(m_numberOfStainComponents);
-        m_localStainProfile->SetNameOfStainOne(m_nameOfStainOne);
-        m_localStainProfile->SetNameOfStainTwo(m_nameOfStainTwo);
-        m_localStainProfile->SetNameOfStainThree(m_nameOfStainThree);
-        //The implicit conversion for m_stainSeparationAlgorithm is an int of the option number
-        //Get the text of the name of the stain separation algorithm from the vector
-        //of names stored in m_localStainProfile
-        int stainAlgNumber = m_stainSeparationAlgorithm;
-        std::string stainAlgName = m_localStainProfile->GetStainSeparationAlgorithmName(stainAlgNumber);
-        m_localStainProfile->SetNameOfStainSeparationAlgorithm(stainAlgName);
-
-        //Assign the RGB values after processing
-
-
-        //TEMP VALUES!!!
-        m_localStainProfile->SetStainOneRGB(0.1, 0.1, 0.1);
-        m_localStainProfile->SetStainTwoRGB(0.3, 0, 0);
-        m_localStainProfile->SetStainThreeRGB(0, 255, 0);
-
-        //Check if the data are valid, write to the 
-        //m_localStainProfile->checkFile(m_saveFileAs);
-
-
-        //Write to some kind of temp file!
-        bool writeSuccessful = m_localStainProfile->writeStainProfile("temp");
-
-        //Make a new temporary stain profile
-        std::shared_ptr<StainProfile> readBack = std::make_shared<StainProfile>();
-        bool readSuccessful = readBack->readStainProfile("temp");
-
-    }
-
-
-}//end run
-
-
-
-/*
-if (selectedFileTobeProcessed_.empty())
-{
-    sedeen::algorithm::parameter::OpenFileDialog::DataType openFileDialogDataType = openFileDialogParam_;
-    selectedFileTobeProcessed_ = openFileDialogDataType.at(0).getFilename();
-    if (!openFileDialogParam_.isUserDefined() || selectedFileTobeProcessed_.empty())
+bool CreateStainVectorProfile::checkParametersChanged(bool somethingChanged) {
+    //Check if any of the parameters changed, plus an external value to check
+    if (somethingChanged
+        || m_nameOfStainProfile.isChanged()
+        || m_numberOfStainComponents.isChanged()
+        || m_nameOfStainOne.isChanged()
+        || m_regionStainOne.isChanged()
+        || m_nameOfStainTwo.isChanged()
+        || m_regionStainTwo.isChanged()
+        || m_nameOfStainThree.isChanged()
+        || m_regionStainThree.isChanged()
+        || m_stainSeparationAlgorithm.isChanged()
+        || m_stainToDisplay.isChanged()
+        || m_showPreviewOnly.isChanged()
+        || m_displayArea.isChanged()
+        || (nullptr == m_colorDeconvolution_factory))
     {
-        //msgBox.setText("Out put directory not set.");
-        //int ret = msgBox.exec();
-        throw std::runtime_error("You did not select the correct file format!");
-        //MessageBox(nullptr, LPCSTR("Please select a directory to save tiles!"), LPCSTR("Notification"), MB_OKCANCEL);
-        return;
+        return true;
     }
-}
-*/
+    else
+    {
+        return false;
+    }
+}//end checkParametersChanged
+
+bool CreateStainVectorProfile::buildPipeline(std::shared_ptr<StainProfile> theProfile) {
+    using namespace image::tile;
+    //There are two possible behaviors: RegionOfInterest, and LoadFromProfile
+    //This plugin only uses RegionOfInterest
+    image::tile::ColorDeconvolution::Behavior behaviorType = image::tile::ColorDeconvolution::Behavior::RegionOfInterest;
+    bool buildSuccessful = false;
+
+    // Get source image properties
+    auto source_factory = image()->getFactory();
+    auto source_color = source_factory->getColorSpace();
+
+    //Choose value from the enumeration in ColorDeconvolution
+    image::tile::ColorDeconvolution::DisplayOptions DisplayOption;
+    switch (m_stainToDisplay)
+    {
+    case 0:
+        DisplayOption = image::tile::ColorDeconvolution::DisplayOptions::STAIN1;
+        break;
+    case 1:
+        DisplayOption = image::tile::ColorDeconvolution::DisplayOptions::STAIN2;
+        break;
+    case 2:
+        DisplayOption = image::tile::ColorDeconvolution::DisplayOptions::STAIN3;
+        break;
+    default:
+        break;
+    }
+
+    //Build the color deconvolution channel
+    if (behaviorType == image::tile::ColorDeconvolution::Behavior::RegionOfInterest) {
+        int numStains = m_numberOfStainComponents;
+        bool oneDefined   = m_regionStainOne.isUserDefined();
+        bool twoDefined   = m_regionStainTwo.isUserDefined();
+        bool threeDefined = m_regionStainThree.isUserDefined();
+
+        std::vector<std::shared_ptr<GraphicItemBase>> regionsOfInterestVector;
+        if ((numStains <= 0) || (numStains > 3)) {
+            return false;
+        }
+        else if (numStains > 0) {
+            if (oneDefined) {
+                std::shared_ptr<GraphicItemBase> region = m_regionStainOne;
+                regionsOfInterestVector.push_back(region);
+                Rect rect = containingRect(regionsOfInterestVector.at(0)->graphic());
+            }
+            else {
+                m_outputText.sendText("Stain 1 region of interest is not defined. Please define a region to use to calculate the stain vector.");
+                return false;
+            }
+        }
+        //These if statements are cumulative, not "else if"
+        if (numStains > 1) {
+            if (twoDefined) {
+                std::shared_ptr<GraphicItemBase> region = m_regionStainTwo;
+                regionsOfInterestVector.push_back(region);
+                Rect rect = containingRect(regionsOfInterestVector.at(1)->graphic());
+            }
+            else {
+                m_outputText.sendText("Stain 2 region of interest is not defined. Please define a region to use to calculate the stain vector.");
+                return false;
+            }
+        }
+        //Cumulative
+        if (numStains > 2) {
+            if (threeDefined) {
+                std::shared_ptr<GraphicItemBase> region = m_regionStainThree;
+                regionsOfInterestVector.push_back(region);
+                Rect rect = containingRect(regionsOfInterestVector.at(2)->graphic());
+            }
+            else {
+                m_outputText.sendText("Stain 3 region of interest is not defined. Please define a region to use to calculate the stain vector.");
+                return false;
+            }
+        }
+        //Pass the regions of interest to the getStainsComponents function
+        double conv_matrix[9] = { 0.0 };
+        auto display_resolution = getDisplayResolution(image(), m_displayArea);
+
+        sedeen::image::getStainsComponents(source_factory,
+            regionsOfInterestVector, display_resolution, conv_matrix);
+
+        //Assign the output of getStainsComponents to the StainProfile 
+        bool assignCheck = theProfile->SetProfilesFromDoubleArray(conv_matrix);
 
 
+        //std::ostringstream ss;
+        //ss << "There are " << numStains << " stains." << std::endl;
+        //ss << "These are the elements of conv_matrix: " << std::endl;
+        //ss << conv_matrix[0] << ", " << conv_matrix[1] << ", " << conv_matrix[2] << std::endl;
+        //ss << conv_matrix[3] << ", " << conv_matrix[4] << ", " << conv_matrix[5] << std::endl;
+        //ss << conv_matrix[6] << ", " << conv_matrix[7] << ", " << conv_matrix[8] << std::endl;
+        //ss << std::endl;
+        //m_outputText.sendText(ss.str());
 
-/*
-std::string CreateStainVectorProfile::openFile(std::string path)
+
+        if (!assignCheck) {
+            return false;
+        }
+    }//end Behavior is RegionOfInterest
+
+
+    //Send information to the kernel
+    auto colorDeconvolution_kernel =
+        std::make_shared<image::tile::ColorDeconvolution>(behaviorType, DisplayOption, theProfile,
+            false, 0.0);  //Do not apply a threshold
+
+    // Create a Factory for the composition of these Kernels
+    auto non_cached_factory =
+        std::make_shared<FilterFactory>(source_factory, colorDeconvolution_kernel);
+
+    // Wrap resulting Factory in a Cache for speedy results
+    m_colorDeconvolution_factory =
+        std::make_shared<Cache>(non_cached_factory, RecentCachePolicy(30));
+
+    buildSuccessful = true;
+
+    //Processing affects the entire field of view, 
+    //so no RegionFactory as in StainAnalysis-plugin
+
+    return buildSuccessful;
+}//end buildPipeline
+
+std::string CreateStainVectorProfile::generateCompleteReport() const {
+    //Combine the output of the stain profile report
+    //and the pixel fraction report, return the full string
+    std::ostringstream ss;
+    ss << generateStainProfileReport(m_localStainProfile);
+    return ss.str();
+}//end generateCompleteReport
+
+std::string CreateStainVectorProfile::generateStainProfileReport(std::shared_ptr<StainProfile> theProfile) const
 {
-    OPENFILENAME ofn;
-    char szFileName[MAX_PATH] = "";
+    //I think using assert is a little too strong here. Use different error handling.
+    assert(nullptr != theProfile);
 
-    //HACK
-    std::string m_path_to_root = "";
+    int numStains = theProfile->GetNumberOfStainComponents();
+    if (numStains < 0) {
+        throw std::runtime_error("Error reading the stain profile. Please change your settings and try again.");
+        return "Error reading the stain profile. Please change your settings and try again.";
+    }
+    //Get the profile contents, place in the output stringstream
+    std::ostringstream ss;
+    ss << std::left << std::setw(5);
+    ss << "Using stain profile: " << theProfile->GetNameOfStainProfile() << std::endl;
+    ss << "Number of component stains: " << numStains << std::endl;
+    ss << std::endl;
 
-    ZeroMemory(&ofn, sizeof(ofn));
-    ofn.lStructSize = sizeof(ofn);
-    ofn.hwndOwner = NULL;
-    ofn.lpstrFilter = "*.csv";
-    ofn.lpstrFile = (LPSTR)szFileName;
-    ofn.nMaxFile = MAX_PATH;
-    ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
-    //ofn.lpstrDefExt = (LPSTR)L"tif";
-    ofn.lpstrInitialDir = (LPSTR)m_path_to_root.c_str();
-    GetOpenFileName(&ofn);
-
-    return ofn.lpstrFile;
-}//end openFile
-*/
-
-
+    //These are cumulative, not if...else
+    //Stain one
+    if (numStains >= 1) {
+        std::array<double, 3> rgb = theProfile->GetStainOneRGB();
+        ss << std::left;
+        ss << "Stain 1: " << theProfile->GetNameOfStainOne() << std::endl;
+        ss << "R: " << std::setw(10) << std::setprecision(5) << rgb[0] <<
+              "G: " << std::setw(10) << std::setprecision(5) << rgb[1] <<
+              "B: " << std::setw(10) << std::setprecision(5) << rgb[2] <<
+              std::endl;
+    }
+    //Stain two
+    if (numStains >= 2) {
+        std::array<double, 3> rgb = theProfile->GetStainTwoRGB();
+        ss << std::left;
+        ss << "Stain 2: " << theProfile->GetNameOfStainTwo() << std::endl;
+        ss << "R: " << std::setw(10) << std::setprecision(5) << rgb[0] <<
+              "G: " << std::setw(10) << std::setprecision(5) << rgb[1] <<
+              "B: " << std::setw(10) << std::setprecision(5) << rgb[2] <<
+              std::endl;
+    }
+    //Stain three
+    if (numStains == 3) {
+        std::array<double, 3> rgb = theProfile->GetStainThreeRGB();
+        ss << std::left;
+        ss << "Stain 3: " << theProfile->GetNameOfStainThree() << std::endl;
+        ss << "R: " << std::setw(10) << std::setprecision(5) << rgb[0] <<
+              "G: " << std::setw(10) << std::setprecision(5) << rgb[1] <<
+              "B: " << std::setw(10) << std::setprecision(5) << rgb[2] <<
+              std::endl;
+    }
+    //Complete, return the string
+    return ss.str();
+}//end generateStainProfileReport
 
 } // namespace algorithm
 } // namespace sedeen
-
 
