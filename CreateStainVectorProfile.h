@@ -102,8 +102,11 @@ private:
 
     OptionParameter m_stainSeparationAlgorithm;
     OptionParameter m_stainToDisplay;
-    BoolParameter m_showPreviewOnly;
+    BoolParameter m_applyThreshold;
+    /// User defined Threshold value.
+    algorithm::DoubleParameter m_threshold;
 
+    BoolParameter m_showPreviewOnly;
     SaveFileDialogParameter m_saveFileAs;
 
 	/// The output result
@@ -122,6 +125,8 @@ private:
 	std::vector<std::string> m_separationAlgorithmOptions;
     std::vector<std::string> m_numComponentsOptions;
     std::vector<std::string> m_stainToDisplayOptions;
+    double m_thresholdDefaultVal;
+    double m_thresholdMaxVal;
 
     ///The stain vector profile and its XML file handling
     std::shared_ptr<StainProfile> m_localStainProfile;
