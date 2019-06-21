@@ -68,11 +68,15 @@ CreateStainVectorProfile::CreateStainVectorProfile()
     m_regionStainThree(),
     m_stainSeparationAlgorithm(),
     m_stainToDisplay(),
+    m_applyThreshold(),
+    m_threshold(),
     m_showPreviewOnly(),
     m_saveFileAs(),
 	m_result(),
 	m_outputText(),
 	m_report(""),
+    m_thresholdDefaultVal(20.0),
+    m_thresholdMaxVal(300.0),
 	m_colorDeconvolution_factory(nullptr)
 {
     //Define the numberOfStainComponents options
@@ -150,6 +154,23 @@ void CreateStainVectorProfile::init(const image::ImageHandle& image) {
     m_stainToDisplay = createOptionParameter(*this, "Show Separated Stain", 
         "Choose which of the defined stains to preview in the display area", 0, m_stainToDisplayOptions, false);
  
+    //User can choose whether to apply the threshold or not
+    m_applyThreshold = createBoolParameter(*this, "Display with Threshold Applied",
+        "If Display with Threshold Applied is set, the threshold value in the slider below will be applied to the stain-separated image",
+        true, false); //default value, optional
+
+    // Init the user defined threshold value
+    //TEMPORARY!! Can't set precision on DoubleParameter right now, so use 1/100 downscale
+    auto color = getColorSpace(image);
+    auto max_value = (1 << bitsPerChannel(color)) - 1;
+    m_threshold = createDoubleParameter(*this,
+        "OD x100 Threshold",   // Widget label
+        "A Threshold value",   // Widget tooltip
+        m_thresholdDefaultVal, // Initial value
+        0.0,                   // minimum value
+        m_thresholdMaxVal,     // maximum value
+        false);
+
     //Allow the user to create visible output, without saving the stain vector profile to a file
     m_showPreviewOnly = createBoolParameter(*this, "Preview Only",
         "If set to Preview Only, clicking Run will create separated images, but will not save the vectors to file",
@@ -278,6 +299,8 @@ bool CreateStainVectorProfile::checkParametersChanged(bool somethingChanged) {
         || m_regionStainThree.isChanged()
         || m_stainSeparationAlgorithm.isChanged()
         || m_stainToDisplay.isChanged()
+        || m_applyThreshold.isChanged()
+        || m_threshold.isChanged()
         || m_showPreviewOnly.isChanged()
         || m_displayArea.isChanged()
         || (nullptr == m_colorDeconvolution_factory))
@@ -292,9 +315,6 @@ bool CreateStainVectorProfile::checkParametersChanged(bool somethingChanged) {
 
 bool CreateStainVectorProfile::buildPipeline(std::shared_ptr<StainProfile> theProfile) {
     using namespace image::tile;
-    //There are two possible behaviors: RegionOfInterest, and LoadFromProfile
-    //This plugin only uses RegionOfInterest
-    image::tile::ColorDeconvolution::Behavior behaviorType = image::tile::ColorDeconvolution::Behavior::RegionOfInterest;
     bool buildSuccessful = false;
 
     // Get source image properties
@@ -319,82 +339,68 @@ bool CreateStainVectorProfile::buildPipeline(std::shared_ptr<StainProfile> thePr
     }
 
     //Build the color deconvolution channel
-    if (behaviorType == image::tile::ColorDeconvolution::Behavior::RegionOfInterest) {
-        int numStains = m_numberOfStainComponents;
-        bool oneDefined   = m_regionStainOne.isUserDefined();
-        bool twoDefined   = m_regionStainTwo.isUserDefined();
-        bool threeDefined = m_regionStainThree.isUserDefined();
+    int numStains = m_numberOfStainComponents;
+    bool oneDefined   = m_regionStainOne.isUserDefined();
+    bool twoDefined   = m_regionStainTwo.isUserDefined();
+    bool threeDefined = m_regionStainThree.isUserDefined();
 
-        std::vector<std::shared_ptr<GraphicItemBase>> regionsOfInterestVector;
-        if ((numStains <= 0) || (numStains > 3)) {
+    std::vector<std::shared_ptr<GraphicItemBase>> regionsOfInterestVector;
+    if ((numStains <= 0) || (numStains > 3)) {
+        return false;
+    }
+    else if (numStains > 0) {
+        if (oneDefined) {
+            std::shared_ptr<GraphicItemBase> region = m_regionStainOne;
+            regionsOfInterestVector.push_back(region);
+            Rect rect = containingRect(regionsOfInterestVector.at(0)->graphic());
+        }
+        else {
+            m_outputText.sendText("Stain 1 region of interest is not defined. Please define a region to use to calculate the stain vector.");
             return false;
         }
-        else if (numStains > 0) {
-            if (oneDefined) {
-                std::shared_ptr<GraphicItemBase> region = m_regionStainOne;
-                regionsOfInterestVector.push_back(region);
-                Rect rect = containingRect(regionsOfInterestVector.at(0)->graphic());
-            }
-            else {
-                m_outputText.sendText("Stain 1 region of interest is not defined. Please define a region to use to calculate the stain vector.");
-                return false;
-            }
+    }
+    //These if statements are cumulative, not "else if"
+    if (numStains > 1) {
+        if (twoDefined) {
+            std::shared_ptr<GraphicItemBase> region = m_regionStainTwo;
+            regionsOfInterestVector.push_back(region);
+            Rect rect = containingRect(regionsOfInterestVector.at(1)->graphic());
         }
-        //These if statements are cumulative, not "else if"
-        if (numStains > 1) {
-            if (twoDefined) {
-                std::shared_ptr<GraphicItemBase> region = m_regionStainTwo;
-                regionsOfInterestVector.push_back(region);
-                Rect rect = containingRect(regionsOfInterestVector.at(1)->graphic());
-            }
-            else {
-                m_outputText.sendText("Stain 2 region of interest is not defined. Please define a region to use to calculate the stain vector.");
-                return false;
-            }
-        }
-        //Cumulative
-        if (numStains > 2) {
-            if (threeDefined) {
-                std::shared_ptr<GraphicItemBase> region = m_regionStainThree;
-                regionsOfInterestVector.push_back(region);
-                Rect rect = containingRect(regionsOfInterestVector.at(2)->graphic());
-            }
-            else {
-                m_outputText.sendText("Stain 3 region of interest is not defined. Please define a region to use to calculate the stain vector.");
-                return false;
-            }
-        }
-        //Pass the regions of interest to the getStainsComponents function
-        double conv_matrix[9] = { 0.0 };
-        auto display_resolution = getDisplayResolution(image(), m_displayArea);
-
-        sedeen::image::getStainsComponents(source_factory,
-            regionsOfInterestVector, display_resolution, conv_matrix);
-
-        //Assign the output of getStainsComponents to the StainProfile 
-        bool assignCheck = theProfile->SetProfilesFromDoubleArray(conv_matrix);
-
-
-        //std::ostringstream ss;
-        //ss << "There are " << numStains << " stains." << std::endl;
-        //ss << "These are the elements of conv_matrix: " << std::endl;
-        //ss << conv_matrix[0] << ", " << conv_matrix[1] << ", " << conv_matrix[2] << std::endl;
-        //ss << conv_matrix[3] << ", " << conv_matrix[4] << ", " << conv_matrix[5] << std::endl;
-        //ss << conv_matrix[6] << ", " << conv_matrix[7] << ", " << conv_matrix[8] << std::endl;
-        //ss << std::endl;
-        //m_outputText.sendText(ss.str());
-
-
-        if (!assignCheck) {
+        else {
+            m_outputText.sendText("Stain 2 region of interest is not defined. Please define a region to use to calculate the stain vector.");
             return false;
         }
-    }//end Behavior is RegionOfInterest
+    }
+    //Cumulative
+    if (numStains > 2) {
+        if (threeDefined) {
+            std::shared_ptr<GraphicItemBase> region = m_regionStainThree;
+            regionsOfInterestVector.push_back(region);
+            Rect rect = containingRect(regionsOfInterestVector.at(2)->graphic());
+        }
+        else {
+            m_outputText.sendText("Stain 3 region of interest is not defined. Please define a region to use to calculate the stain vector.");
+            return false;
+        }
+    }
+    //Pass the regions of interest to the getStainsComponents function
+    double conv_matrix[9] = { 0.0 };
+    auto display_resolution = getDisplayResolution(image(), m_displayArea);
 
+    sedeen::image::getStainsComponents(source_factory,
+        regionsOfInterestVector, display_resolution, conv_matrix);
+
+    //Assign the output of getStainsComponents to the StainProfile 
+    bool assignCheck = theProfile->SetProfilesFromDoubleArray(conv_matrix);
+
+    if (!assignCheck) {
+        return false;
+    }
 
     //Send information to the kernel
     auto colorDeconvolution_kernel =
-        std::make_shared<image::tile::ColorDeconvolution>(behaviorType, DisplayOption, theProfile,
-            false, 0.0);  //Do not apply a threshold
+        std::make_shared<image::tile::ColorDeconvolution>(DisplayOption, theProfile,
+            m_applyThreshold, m_threshold / 100.0);  //Need to tell it whether to use the threshold or not
 
     // Create a Factory for the composition of these Kernels
     auto non_cached_factory =
