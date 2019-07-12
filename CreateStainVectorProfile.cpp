@@ -26,6 +26,7 @@
 //
 // Primary header
 #include "CreateStainVectorProfile.h"
+#include "StainRGBFromROI.h"
 
 #include <algorithm>
 #include <cassert>
@@ -162,7 +163,6 @@ void CreateStainVectorProfile::init(const image::ImageHandle& image) {
     // Init the user defined threshold value
     //TEMPORARY!! Can't set precision on DoubleParameter right now, so use 1/100 downscale
     auto color = getColorSpace(image);
-    auto max_value = (1 << bitsPerChannel(color)) - 1;
     m_threshold = createDoubleParameter(*this,
         "OD x100 Threshold",   // Widget label
         "A Threshold value",   // Widget tooltip
@@ -174,7 +174,7 @@ void CreateStainVectorProfile::init(const image::ImageHandle& image) {
     //Allow the user to create visible output, without saving the stain vector profile to a file
     m_showPreviewOnly = createBoolParameter(*this, "Preview Only",
         "If set to Preview Only, clicking Run will create separated images, but will not save the vectors to file",
-        true, false);
+        false, false);
 
     //Allow the user to choose where to save the new stain vector profile
     sedeen::file::FileDialogOptions saveFileDialogOptions = defineSaveFileDialogOptions();
@@ -200,8 +200,27 @@ void CreateStainVectorProfile::run() {
 
 	// Update results
 	if (parameters_changed || display_changed) {
+        //Check whether to write to file, that the field is not blank,
+        //and that the file can be created or written to
+        if (m_showPreviewOnly == false) {
+            //Get the full path file name from the file dialog parameter
+            sedeen::algorithm::parameter::SaveFileDialog::DataType fileDialogDataType = this->m_saveFileAs;
+            std::string theFile = fileDialogDataType.getFilename();
+            //Is the file field blank?
+            if (theFile.empty()) {
+                m_outputText.sendText("The filename is blank. Please choose a file to save the profile to, or select Preview Only.");
+                return;
+            }
+            //Does it exist or can it be created, and can it be written to?
+            bool validFileCheck = StainProfile::checkFile(theFile, "w");
+            if (!validFileCheck) {
+                m_outputText.sendText("The filename selected cannot be written to. Please choose another, or check the permissions of the directory.");
+                return;
+            }
+        }
+
         //Clear the values in the StainProfile
-        theProfile->ClearXMLDocument();
+        theProfile->ClearProfile();
         //Assign values from the parameters to the local stain profile object
         //Take advantage of the implicit conversion operators in the parameter definitions
         theProfile->SetNameOfStainProfile(m_nameOfStainProfile);
@@ -223,6 +242,9 @@ void CreateStainVectorProfile::run() {
             return;
         }
 
+        //A previous version included an "intermediate result" here, to display
+        //a blurry temporary image (rather than just black) while calculations proceeded
+
         //Update the display area with the deconvolution output
         if (nullptr != m_colorDeconvolution_factory) {
             m_result.update(m_colorDeconvolution_factory, m_displayArea, *this);
@@ -234,7 +256,7 @@ void CreateStainVectorProfile::run() {
             m_outputText.sendText(report); 
         }
 
-        //Determine if this is a preview only run, or if an output file should be written
+        //If an output file should be written, save the localStainProfile to it
         if (m_showPreviewOnly == false) {
             //Send the contents of the localStainProfile to the given file
             bool saveResult = SaveStainProfileToFile();
@@ -398,9 +420,11 @@ bool CreateStainVectorProfile::buildPipeline(std::shared_ptr<StainProfile> thePr
     }
 
     //Send information to the kernel
+    //TEMPORARY! Note that the threshold value must be divided by 100 here,
+    //because it is not possible to set the precision of a double parameter as of Sedeen 5.4.1
     auto colorDeconvolution_kernel =
         std::make_shared<image::tile::ColorDeconvolution>(DisplayOption, theProfile,
-            m_applyThreshold, m_threshold / 100.0);  //Need to tell it whether to use the threshold or not
+            m_applyThreshold, m_threshold/100.0);  //Need to tell it whether to use the threshold or not
 
     // Create a Factory for the composition of these Kernels
     auto non_cached_factory =
@@ -411,10 +435,6 @@ bool CreateStainVectorProfile::buildPipeline(std::shared_ptr<StainProfile> thePr
         std::make_shared<Cache>(non_cached_factory, RecentCachePolicy(30));
 
     buildSuccessful = true;
-
-    //Processing affects the entire field of view, 
-    //so no RegionFactory as in StainAnalysis-plugin
-
     return buildSuccessful;
 }//end buildPipeline
 
@@ -433,7 +453,6 @@ std::string CreateStainVectorProfile::generateStainProfileReport(std::shared_ptr
 
     int numStains = theProfile->GetNumberOfStainComponents();
     if (numStains < 0) {
-        throw std::runtime_error("Error reading the stain profile. Please change your settings and try again.");
         return "Error reading the stain profile. Please change your settings and try again.";
     }
     //Get the profile contents, place in the output stringstream

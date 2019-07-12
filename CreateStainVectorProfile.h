@@ -45,7 +45,7 @@ namespace tile {
 } // namespace tile
 
 namespace algorithm {
-#define round(x) ( x >= 0.0f ? floor(x + 0.5f) : ceil(x - 0.5f) )
+//#define round(x) ( x >= 0.0f ? floor(x + 0.5f) : ceil(x - 0.5f) )
 
 ///Create Stain Vector Profile
 ///This plugin creates a way for the user to define a combination
@@ -78,7 +78,6 @@ private:
 
     ///Save the stain profile as defined in the parameters to the file in the save file dialog
     bool SaveStainProfileToFile();
-
 
 private:
     //Member parameters
@@ -116,9 +115,6 @@ private:
 
 	/// The intermediate image factory after color deconvolution
 	std::shared_ptr<image::tile::Factory> m_colorDeconvolution_factory;
-
-	///User-selected regions of interest - also have individual pointers, so don't need?
-	//std::vector<algorithm::GraphicItemParameter> m_regionsOfInterest;
 
 private:
     //Member variables
