@@ -1,25 +1,29 @@
 PROJECT( CreateStainVectorProfile )
-CMAKE_MINIMUM_REQUIRED( VERSION 3.8 )
+CMAKE_MINIMUM_REQUIRED( VERSION 3.13 )
 # Enable C++17 features
 SET(CMAKE_CXX_STANDARD 17)
+INCLUDE(FetchContent)
+
+#Note which version of Sedeen Viewer this plugin was last compiled and tested with
+SET(SEDEENSDK_VERSION "5.4.2.20190715" CACHE STRING "Last version of Sedeen Viewer the plugin was compiled and tested with")
 
 # Define project description variables
-SET( DISPLAY_NAME_TEXT "Create Stain Vector Profile 5.4.1.20190327" CACHE STRING "Name of the plugin as it should be displayed in Sedeen Viewer")
+SET( DISPLAY_NAME_TEXT "Create Stain Vector Profile" CACHE STRING "Name of the plugin as it should be displayed in Sedeen Viewer")
 SET( SUPPORT_URL_TEXT "http://pathcore.com/support/plugin/info/${PROJECT_NAME}" CACHE STRING "Location users can find help with the plugin" )
 SET( DEVELOPER_TEXT "Sunnybrook Research Institute" CACHE STRING "Name of the author or organization that created the plugin" )
 
 # Load the Sedeen dependencies
 SET(PROGRAMFILESX86 "PROGRAMFILES\(X86\)")
 FIND_PACKAGE( SEDEENSDK REQUIRED 
-                HINTS ../../.. 
-                    "$ENV{${PROGRAMFILESX86}}/Sedeen Viewer SDK/v5.4.1.20190327/msvc2017"
-                    "$ENV{PROGRAMFILES}/Sedeen Viewer SDK/v5.4.1.20190327/msvc2017" )
-
-#Get components of Poco that weren't included in the Sedeen SDK
-#IF(NOT Poco_DIR)
-#  SET(Poco_DIR "POCO_ROOT-NOTFOUND" CACHE PATH "Installation prefix of the Poco C++ libraries")
-#ENDIF()
-#FIND_PACKAGE(Poco REQUIRED Foundation XML)
+  HINTS ../../.. 
+        "$ENV{${PROGRAMFILESX86}}/Sedeen Viewer SDK/v5.4.2.20190715/msvc2017"
+        "$ENV{PROGRAMFILES}/Sedeen Viewer SDK/v5.4.2.20190715/msvc2017" )
+        
+# Load the included OpenCV libs
+FIND_PACKAGE(SEDEENSDK_OPENCV REQUIRED
+             HINTS ../../..
+                  "$ENV{${PROGRAMFILESX86}}/Sedeen Viewer SDK/v5.4.2.20190715/msvc2017"
+                  "$ENV{PROGRAMFILES}/Sedeen Viewer SDK/v5.4.2.20190715/msvc2017" )
 
 IF(NOT BOOST_ROOT)
   SET(BOOST_ROOT "BOOST_ROOT-NOTFOUND" CACHE PATH "Preferred installation prefix of the Boost C++ library")
@@ -29,47 +33,73 @@ IF(NOT BOOST_VERSION)
 ENDIF()
 FIND_PACKAGE(Boost ${BOOST_VERSION} )
 
-#Inlude TinyXML2 for XML file reading and writing
-IF(NOT TinyXML2_INCLUDE_DIR)
-  SET(TinyXML2_INCLUDE_DIR "TinyXML2_INCLUDE_DIR-NOTFOUND" CACHE PATH "Location of include files for TinyXML2")
+# Fetch TinyXML2 files. Do not build as a subproject
+FetchContent_Declare(
+  TinyXML2
+  GIT_REPOSITORY https://github.com/leethomason/tinyxml2.git
+  GIT_TAG 61a4c7d507322c9f494f5880d4c94b60e4ce9590
+)
+# Check if the tinyxml2 files have already been populated
+FetchContent_GetProperties(TinyXML2)
+STRING(TOLOWER "TinyXML2" TinyXML2Name)
+IF(NOT ${TinyXML2Name}_POPULATED)
+  #Fetch TinyXML2 using the details from FetchContent_Declare 	
+  FetchContent_Populate(TinyXML2)
 ENDIF()
-IF(NOT TinyXML2_LIB_DIR)
-  SET(TinyXML2_LIB_DIR "TinyXML2_LIB_DIR-NOTFOUND" CACHE PATH "Location of library files for TinyXML2")
-ENDIF()
-FIND_PACKAGE(TinyXML2)
 
-# Name of the directory for files from external sources (change this to the binary dir, and set up a git fetch command)
-SET(EXTERNAL_SOURCES_DIR "${CMAKE_CURRENT_BINARY_DIR}/external-sources")
-FILE(MAKE_DIRECTORY ${EXTERNAL_SOURCES_DIR})
+# Fetch the StainAnalysis-plugin repository. Do not build as a subproject
+FetchContent_Declare(
+  StainAnalysisplugin
+  GIT_REPOSITORY https://github.com/sedeen-piip-plugins/StainAnalysis-plugin.git
+  GIT_TAG 6b507bf2eacaedd1ed332af5550b7285292142f6
+)
+FetchContent_GetProperties(StainAnalysisplugin)
+STRING(TOLOWER "StainAnalysisplugin" StainAnalysispluginName)
+#IF(NOT ${StainAnalysispluginName}_POPULATED)
+#  FetchContent_Populate(StainAnalysisplugin)
+#ENDIF()
+#SET(STAIN_ANALYSIS_DIR ${${StainAnalysispluginName}_SOURCE_DIR})
 
-#This is temporary.
-SET(STAIN_ANALYSIS_SOURCES_DIR "../StainAnalysis-plugin")
-CONFIGURE_FILE(${STAIN_ANALYSIS_SOURCES_DIR}/StainProfile.h ${EXTERNAL_SOURCES_DIR}/StainProfile.h COPYONLY)
-CONFIGURE_FILE(${STAIN_ANALYSIS_SOURCES_DIR}/StainProfile.cpp ${EXTERNAL_SOURCES_DIR}/StainProfile.cpp COPYONLY)
-CONFIGURE_FILE(${STAIN_ANALYSIS_SOURCES_DIR}/ColorDeconvolutionKernel.h ${EXTERNAL_SOURCES_DIR}/ColorDeconvolutionKernel.h COPYONLY)
-CONFIGURE_FILE(${STAIN_ANALYSIS_SOURCES_DIR}/ColorDeconvolutionKernel.cpp ${EXTERNAL_SOURCES_DIR}/ColorDeconvolutionKernel.cpp COPYONLY)
-CONFIGURE_FILE(${STAIN_ANALYSIS_SOURCES_DIR}/StainVectorMath.h ${EXTERNAL_SOURCES_DIR}/StainVectorMath.h COPYONLY)
-CONFIGURE_FILE(${STAIN_ANALYSIS_SOURCES_DIR}/StainVectorMath.cpp ${EXTERNAL_SOURCES_DIR}/StainVectorMath.cpp COPYONLY)
+SET(STAIN_ANALYSIS_DIR "../StainAnalysis-plugin")
 
-INCLUDE_DIRECTORIES( ${INCLUDE_DIRECTORIES} ${SEDEENSDK_INCLUDE_DIR} ${EXTERNAL_SOURCES_DIR} ${BOOST_ROOT} ${TinyXML2_INCLUDE_DIR})
-LINK_DIRECTORIES( ${LINK_DIRECTORIES} ${SEDEENSDK_LIBRARY_DIR} ${TinyXML2_LIB_DIR}) 
+
+INCLUDE_DIRECTORIES( ${INCLUDE_DIRECTORIES} 
+                     ${SEDEENSDK_INCLUDE_DIR} 
+                     ${SEDEENSDK_OPENCV_INCLUDE_DIR}
+                     ${BOOST_ROOT} 
+                     ${${TinyXML2Name}_SOURCE_DIR}
+                     ${STAIN_ANALYSIS_DIR}
+                     )
+
+LINK_DIRECTORIES( ${LINK_DIRECTORIES} 
+                  ${SEDEENSDK_LIBRARY_DIR} 
+                  ${SEDEENSDK_OPENCV_LIBRARY_DIR}
+                  )
 
 ADD_LIBRARY( ${PROJECT_NAME} MODULE 
-                 ${PROJECT_NAME}.cpp ${PROJECT_NAME}.h 
-                 ${EXTERNAL_SOURCES_DIR}/StainProfile.h ${EXTERNAL_SOURCES_DIR}/StainProfile.cpp 
-                 ${EXTERNAL_SOURCES_DIR}/ColorDeconvolutionKernel.h ${EXTERNAL_SOURCES_DIR}/ColorDeconvolutionKernel.cpp 
-                 ${EXTERNAL_SOURCES_DIR}/StainVectorMath.h ${EXTERNAL_SOURCES_DIR}/StainVectorMath.cpp
-                 )
+             ${PROJECT_NAME}.cpp 
+             ${PROJECT_NAME}.h 
+             ${${TinyXML2Name}_SOURCE_DIR}/tinyxml2.h 
+             ${${TinyXML2Name}_SOURCE_DIR}/tinyxml2.cpp
+             ${STAIN_ANALYSIS_DIR}/StainProfile.h 
+             ${STAIN_ANALYSIS_DIR}/StainProfile.cpp 
+             ${STAIN_ANALYSIS_DIR}/ColorDeconvolutionKernel.h 
+             ${STAIN_ANALYSIS_DIR}/ColorDeconvolutionKernel.cpp 
+             ${STAIN_ANALYSIS_DIR}/StainVectorMath.h 
+             ${STAIN_ANALYSIS_DIR}/StainVectorMath.cpp
+             ${STAIN_ANALYSIS_DIR}/StainRGBFromROI.h
+             ${STAIN_ANALYSIS_DIR}/StainRGBFromROI.cpp
+             )
 
 # Link the library against the Sedeen SDK libraries
-TARGET_LINK_LIBRARIES( ${PROJECT_NAME} ${SEDEENSDK_LIBRARIES}
-                           TinyXML2 )
+TARGET_LINK_LIBRARIES( ${PROJECT_NAME} ${SEDEENSDK_LIBRARIES} 
+                       ${SEDEENSDK_OPENCV_LIBRARIES} )
 
-#Create or update the .info file in the build directory
+# Create or update the .info file in the build directory
 STRING( TIMESTAMP DATE_CREATED_TEXT "%Y-%m-%d" )
 CONFIGURE_FILE( "infoTemplate.info.in" "${PROJECT_NAME}.info" )
 
-#Set the relative directory where the plugin should be located
+# Set the relative directory where the plugin should be located
 SET( PLUGIN_RELATIVE_DIR "plugins/cpp/piip/${PROJECT_NAME}" )
 
 # Set the install destination directory
@@ -89,9 +119,12 @@ IF( ${SEDEEN_FOUND} )
       LIBRARY DESTINATION "${PLUGIN_DESTINATION_DIR}")
   INSTALL(FILES "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.info"
       DESTINATION "${PLUGIN_DESTINATION_DIR}")
+  INSTALL(DIRECTORY "${SEDEENSDK_DIR}/bin/" 
+      DESTINATION "${PLUGIN_DESTINATION_DIR}" 
+      FILES_MATCHING PATTERN "opencv*0.dll" )
 ENDIF()
 
-#Shows all variables and their values
+#For debugging: shows all variables and their values
 #get_cmake_property(_variableNames VARIABLES)
 #list (SORT _variableNames)
 #foreach (_variableName ${_variableNames})
