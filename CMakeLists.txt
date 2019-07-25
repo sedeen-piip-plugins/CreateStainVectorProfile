@@ -18,13 +18,14 @@ FIND_PACKAGE( SEDEENSDK REQUIRED
   HINTS ../../.. 
         "$ENV{${PROGRAMFILESX86}}/Sedeen Viewer SDK/v5.4.1.20190327/msvc2017"
         "$ENV{PROGRAMFILES}/Sedeen Viewer SDK/v5.4.1.20190327/msvc2017" )
-
+        
 IF(NOT BOOST_ROOT)
   SET(BOOST_ROOT "BOOST_ROOT-NOTFOUND" CACHE PATH "Preferred installation prefix of the Boost C++ library")
 ENDIF()
 IF(NOT BOOST_VERSION)
   SET(BOOST_VERSION "BOOST_VERSION-NOTFOUND" CACHE STRING "Boost library version number")
 ENDIF()
+
 FIND_PACKAGE(Boost ${BOOST_VERSION} )
 
 # Fetch TinyXML2 files. Do not build as a subproject
