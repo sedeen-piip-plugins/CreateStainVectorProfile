@@ -4,8 +4,11 @@ CMAKE_MINIMUM_REQUIRED( VERSION 3.13 )
 SET(CMAKE_CXX_STANDARD 17)
 INCLUDE(FetchContent)
 
+#Note which version of Sedeen Viewer this plugin was last compiled and tested with
+SET(SEDEEN_LAST_COMPILED_VERSION "5.4.1.20190327" CACHE STRING "Last version of Sedeen Viewer the plugin was compiled and tested with")
+
 # Define project description variables
-SET( DISPLAY_NAME_TEXT "Create Stain Vector Profile 5.4.1.20190327" CACHE STRING "Name of the plugin as it should be displayed in Sedeen Viewer")
+SET( DISPLAY_NAME_TEXT "Create Stain Vector Profile" CACHE STRING "Name of the plugin as it should be displayed in Sedeen Viewer")
 SET( SUPPORT_URL_TEXT "http://pathcore.com/support/plugin/info/${PROJECT_NAME}" CACHE STRING "Location users can find help with the plugin" )
 SET( DEVELOPER_TEXT "Sunnybrook Research Institute" CACHE STRING "Name of the author or organization that created the plugin" )
 
@@ -41,16 +44,15 @@ ENDIF()
 # Fetch the StainAnalysis-plugin repository. Do not build as a subproject
 FetchContent_Declare(
   StainAnalysisplugin
-  GIT_REPOSITORY https://github.com/mschumak/StainAnalysis-plugin.git
-  GIT_TAG cfda3248dcb6a6ed65073c15258adb482d1653e4
+  GIT_REPOSITORY https://github.com/sedeen-piip-plugins/StainAnalysis-plugin.git
+  GIT_TAG 6bcd334e971560705d2641c4221ba651b79b84ec
 )
 FetchContent_GetProperties(StainAnalysisplugin)
 STRING(TOLOWER "StainAnalysisplugin" StainAnalysispluginName)
 IF(NOT ${StainAnalysispluginName}_POPULATED)
-#  FetchContent_Populate(StainAnalysisplugin)
+  FetchContent_Populate(StainAnalysisplugin)
 ENDIF()
-SET(STAIN_ANALYSIS_DIR "../StainAnalysis-plugin")
-#SET(STAIN_ANALYSIS_DIR ${${StainAnalysispluginName}_SOURCE_DIR})
+SET(STAIN_ANALYSIS_DIR ${${StainAnalysispluginName}_SOURCE_DIR})
 
 INCLUDE_DIRECTORIES( ${INCLUDE_DIRECTORIES} 
                      ${SEDEENSDK_INCLUDE_DIR} 

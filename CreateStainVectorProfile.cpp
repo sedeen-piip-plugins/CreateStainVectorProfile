@@ -219,7 +219,7 @@ void CreateStainVectorProfile::run() {
         }
 
         //Clear the values in the StainProfile
-        theProfile->ClearXMLDocument();
+        theProfile->ClearProfile();
         //Assign values from the parameters to the local stain profile object
         //Take advantage of the implicit conversion operators in the parameter definitions
         theProfile->SetNameOfStainProfile(m_nameOfStainProfile);
