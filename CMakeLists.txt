@@ -5,7 +5,7 @@ SET(CMAKE_CXX_STANDARD 17)
 INCLUDE(FetchContent)
 
 #Note which version of Sedeen Viewer this plugin was last compiled and tested with
-SET(SEDEEN_LAST_COMPILED_VERSION "5.4.1.20190327" CACHE STRING "Last version of Sedeen Viewer the plugin was compiled and tested with")
+SET(SEDEENSDK_VERSION "5.4.2.20190715" CACHE STRING "Last version of Sedeen Viewer the plugin was compiled and tested with")
 
 # Define project description variables
 SET( DISPLAY_NAME_TEXT "Create Stain Vector Profile" CACHE STRING "Name of the plugin as it should be displayed in Sedeen Viewer")
@@ -16,8 +16,8 @@ SET( DEVELOPER_TEXT "Sunnybrook Research Institute" CACHE STRING "Name of the au
 SET(PROGRAMFILESX86 "PROGRAMFILES\(X86\)")
 FIND_PACKAGE( SEDEENSDK REQUIRED 
   HINTS ../../.. 
-        "$ENV{${PROGRAMFILESX86}}/Sedeen Viewer SDK/v5.4.1.20190327/msvc2017"
-        "$ENV{PROGRAMFILES}/Sedeen Viewer SDK/v5.4.1.20190327/msvc2017" )
+        "$ENV{${PROGRAMFILESX86}}/Sedeen Viewer SDK/v5.4.2.20190715/msvc2017"
+        "$ENV{PROGRAMFILES}/Sedeen Viewer SDK/v5.4.2.20190715/msvc2017" )
         
 IF(NOT BOOST_ROOT)
   SET(BOOST_ROOT "BOOST_ROOT-NOTFOUND" CACHE PATH "Preferred installation prefix of the Boost C++ library")
@@ -46,7 +46,7 @@ ENDIF()
 FetchContent_Declare(
   StainAnalysisplugin
   GIT_REPOSITORY https://github.com/sedeen-piip-plugins/StainAnalysis-plugin.git
-  GIT_TAG 6bcd334e971560705d2641c4221ba651b79b84ec
+  GIT_TAG 6b507bf2eacaedd1ed332af5550b7285292142f6
 )
 FetchContent_GetProperties(StainAnalysisplugin)
 STRING(TOLOWER "StainAnalysisplugin" StainAnalysispluginName)
@@ -57,26 +57,26 @@ SET(STAIN_ANALYSIS_DIR ${${StainAnalysispluginName}_SOURCE_DIR})
 
 INCLUDE_DIRECTORIES( ${INCLUDE_DIRECTORIES} 
                      ${SEDEENSDK_INCLUDE_DIR} 
-					 ${BOOST_ROOT} 
-					 ${${TinyXML2Name}_SOURCE_DIR}
+                     ${BOOST_ROOT} 
+                     ${${TinyXML2Name}_SOURCE_DIR}
                      ${STAIN_ANALYSIS_DIR}
-					 )
+                     )
 
 LINK_DIRECTORIES( ${LINK_DIRECTORIES} 
                   ${SEDEENSDK_LIBRARY_DIR} 
-				  )
+                  )
 
 ADD_LIBRARY( ${PROJECT_NAME} MODULE 
              ${PROJECT_NAME}.cpp 
-			 ${PROJECT_NAME}.h 
+             ${PROJECT_NAME}.h 
              ${${TinyXML2Name}_SOURCE_DIR}/tinyxml2.h 
-			 ${${TinyXML2Name}_SOURCE_DIR}/tinyxml2.cpp
-			 ${STAIN_ANALYSIS_DIR}/StainProfile.h 
-			 ${STAIN_ANALYSIS_DIR}/StainProfile.cpp 
+             ${${TinyXML2Name}_SOURCE_DIR}/tinyxml2.cpp
+             ${STAIN_ANALYSIS_DIR}/StainProfile.h 
+             ${STAIN_ANALYSIS_DIR}/StainProfile.cpp 
              ${STAIN_ANALYSIS_DIR}/ColorDeconvolutionKernel.h 
-			 ${STAIN_ANALYSIS_DIR}/ColorDeconvolutionKernel.cpp 
+             ${STAIN_ANALYSIS_DIR}/ColorDeconvolutionKernel.cpp 
              ${STAIN_ANALYSIS_DIR}/StainVectorMath.h 
-			 ${STAIN_ANALYSIS_DIR}/StainVectorMath.cpp
+             ${STAIN_ANALYSIS_DIR}/StainVectorMath.cpp
              )
 
 # Link the library against the Sedeen SDK libraries
