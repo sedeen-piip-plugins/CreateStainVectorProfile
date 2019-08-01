@@ -5,7 +5,7 @@ SET(CMAKE_CXX_STANDARD 17)
 INCLUDE(FetchContent)
 
 #Note which version of Sedeen Viewer this plugin was last compiled and tested with
-SET(SEDEEN_LAST_COMPILED_VERSION "5.4.2.20190715" CACHE STRING "Last version of Sedeen Viewer the plugin was compiled and tested with")
+SET(SEDEENSDK_VERSION "5.4.2.20190715" CACHE STRING "Last version of Sedeen Viewer the plugin was compiled and tested with")
 
 # Define project description variables
 SET( DISPLAY_NAME_TEXT "Create Stain Vector Profile" CACHE STRING "Name of the plugin as it should be displayed in Sedeen Viewer")
@@ -46,7 +46,7 @@ ENDIF()
 FetchContent_Declare(
   StainAnalysisplugin
   GIT_REPOSITORY https://github.com/sedeen-piip-plugins/StainAnalysis-plugin.git
-  GIT_TAG 6bcd334e971560705d2641c4221ba651b79b84ec
+  GIT_TAG 6b507bf2eacaedd1ed332af5550b7285292142f6
 )
 FetchContent_GetProperties(StainAnalysisplugin)
 STRING(TOLOWER "StainAnalysisplugin" StainAnalysispluginName)
