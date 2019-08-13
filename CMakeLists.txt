@@ -5,7 +5,7 @@ SET(CMAKE_CXX_STANDARD 17)
 INCLUDE(FetchContent)
 
 #Note which version of Sedeen Viewer this plugin was last compiled and tested with
-SET(SEDEENSDK_VERSION "5.4.2.20190715" CACHE STRING "Last version of Sedeen Viewer the plugin was compiled and tested with")
+SET(SEDEENSDK_VERSION "5.4.3.20190808" CACHE STRING "Last version of Sedeen Viewer the plugin was compiled and tested with")
 
 # Define project description variables
 SET( DISPLAY_NAME_TEXT "Create Stain Vector Profile" CACHE STRING "Name of the plugin as it should be displayed in Sedeen Viewer")
@@ -16,8 +16,8 @@ SET( DEVELOPER_TEXT "Sunnybrook Research Institute" CACHE STRING "Name of the au
 SET(PROGRAMFILESX86 "PROGRAMFILES\(X86\)")
 FIND_PACKAGE( SEDEENSDK REQUIRED 
   HINTS ../../.. 
-        "$ENV{${PROGRAMFILESX86}}/Sedeen Viewer SDK/v5.4.2.20190715/msvc2017"
-        "$ENV{PROGRAMFILES}/Sedeen Viewer SDK/v5.4.2.20190715/msvc2017" )
+        "$ENV{${PROGRAMFILESX86}}/Sedeen Viewer SDK/v5.4.3.20190808/msvc2017"
+        "$ENV{PROGRAMFILES}/Sedeen Viewer SDK/v5.4.3.20190808/msvc2017" )
         
 # Load the included OpenCV libs
 FIND_PACKAGE(SEDEENSDK_OPENCV REQUIRED
@@ -51,7 +51,7 @@ ENDIF()
 FetchContent_Declare(
   StainAnalysisplugin
   GIT_REPOSITORY https://github.com/sedeen-piip-plugins/StainAnalysis-plugin.git
-  GIT_TAG 6b507bf2eacaedd1ed332af5550b7285292142f6
+  GIT_TAG 26cd478479c18dfd2031ba300e294f4c3e374b64
 )
 FetchContent_GetProperties(StainAnalysisplugin)
 STRING(TOLOWER "StainAnalysisplugin" StainAnalysispluginName)
