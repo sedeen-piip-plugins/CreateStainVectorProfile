@@ -5,7 +5,7 @@ SET(CMAKE_CXX_STANDARD 17)
 INCLUDE(FetchContent)
 
 #Note which version of Sedeen Viewer this plugin was last compiled and tested with
-SET(SEDEENSDK_VERSION "5.4.3.20190808" CACHE STRING "Last version of Sedeen Viewer the plugin was compiled and tested with")
+SET(SEDEENSDK_VERSION "5.4.4.20191024" CACHE STRING "Last version of Sedeen Viewer the plugin was compiled and tested with")
 
 # Define project description variables
 SET( DISPLAY_NAME_TEXT "Create Stain Vector Profile" CACHE STRING "Name of the plugin as it should be displayed in Sedeen Viewer")
@@ -16,14 +16,42 @@ SET( DEVELOPER_TEXT "Sunnybrook Research Institute" CACHE STRING "Name of the au
 SET(PROGRAMFILESX86 "PROGRAMFILES\(X86\)")
 FIND_PACKAGE( SEDEENSDK REQUIRED 
   HINTS ../../.. 
-        "$ENV{${PROGRAMFILESX86}}/Sedeen Viewer SDK/v5.4.3.20190808/msvc2017"
-        "$ENV{PROGRAMFILES}/Sedeen Viewer SDK/v5.4.3.20190808/msvc2017" )
+        "$ENV{${PROGRAMFILESX86}}/Sedeen Viewer SDK/v5.4.4.20191024/msvc2017"
+        "$ENV{PROGRAMFILES}/Sedeen Viewer SDK/v5.4.4.20191024/msvc2017" )
         
 # Load the included OpenCV libs
 FIND_PACKAGE(SEDEENSDK_OPENCV REQUIRED
-             HINTS ../../..
-                  "$ENV{${PROGRAMFILESX86}}/Sedeen Viewer SDK/v5.4.2.20190715/msvc2017"
-                  "$ENV{PROGRAMFILES}/Sedeen Viewer SDK/v5.4.2.20190715/msvc2017" )
+  HINTS ../../..
+        "$ENV{${PROGRAMFILESX86}}/Sedeen Viewer SDK/v5.4.4.20191024/msvc2017"
+        "$ENV{PROGRAMFILES}/Sedeen Viewer SDK/v5.4.4.20191024/msvc2017" )
+
+#Configure MLPACK (requires some Boost libraries)
+SET(MLPACK_REQUIRED_BOOST_COMPONENTS "serialization" "program_options")
+FOREACH(component IN ITEMS ${MLPACK_REQUIRED_BOOST_COMPONENTS})
+  SET(MLPACK_REQUIRED_BOOST_LIBRARIES ${MLPACK_REQUIRED_BOOST_LIBRARIES} "Boost::${component}")
+ENDFOREACH(component)
+
+SET(MLPACK_INCLUDE_DIR "MLPACK_INCLUDE_DIR-NOTFOUND" CACHE PATH "Base directory of the MLPACK include files")
+SET(MLPACK_LIBRARY_DIR "MLPACK_LIBRARY_DIR-NOTFOUND" CACHE PATH "Directory containing mlpack.lib")
+#List all .lib files in MLPACK_LIBRARY_DIR
+FILE(GLOB MLPACK_LIBRARIES "${MLPACK_LIBRARY_DIR}/*.lib")
+
+#Configure the Armadillo library (used by MLPACK)
+SET(ARMADILLO_INCLUDE_DIR "ARMADILLO_INCLUDE_DIR-NOTFOUND" CACHE PATH "Location of armadillo include file and subdirectory")
+SET(ARMADILLO_LIBRARY "ARMADILLO_LIBRARY-NOTFOUND" CACHE FILEPATH "Full path to the library file armadillo.lib")
+GET_FILENAME_COMPONENT(ARMADILLO_LIBRARY_DIR ARMADILLO_LIBRARY DIRECTORY)
+
+#Configure the LAPACK linear algebra library (used by MLPACK)
+SET(LAPACK_STATIC_LIBRARY "LAPACK_STATIC_LIBRARY-NOTFOUND" CACHE FILEPATH "Full path to the static library file liblapack.lib")
+GET_FILENAME_COMPONENT(LAPACK_STATIC_LIBRARY_DIR LAPACK_STATIC_LIBRARY DIRECTORY)
+SET(LAPACK_DYNAMIC_LIBRARY "LAPACK_DYNAMIC_LIBRARY-NOTFOUND" CACHE FILEPATH "Full path to the dynamic library file liblapack.dll")
+GET_FILENAME_COMPONENT(LAPACK_DYNAMIC_LIBRARY_DIR LAPACK_DYNAMIC_LIBRARY DIRECTORY)
+
+#Configure the LAPACK linear algebra library (used by MLPACK)
+SET(BLAS_STATIC_LIBRARY "BLAS_STATIC_LIBRARY-NOTFOUND" CACHE FILEPATH "Full path to the static library file libblas.lib")
+GET_FILENAME_COMPONENT(BLAS_STATIC_LIBRARY_DIR BLAS_STATIC_LIBRARY DIRECTORY)
+SET(BLAS_DYNAMIC_LIBRARY "BLAS_DYNAMIC_LIBRARY-NOTFOUND" CACHE FILEPATH "Full path to the dynamic library file libblas.dll")
+GET_FILENAME_COMPONENT(BLAS_DYNAMIC_LIBRARY_DIR BLAS_DYNAMIC_LIBRARY DIRECTORY)
 
 IF(NOT BOOST_ROOT)
   SET(BOOST_ROOT "BOOST_ROOT-NOTFOUND" CACHE PATH "Preferred installation prefix of the Boost C++ library")
@@ -31,7 +59,7 @@ ENDIF()
 IF(NOT BOOST_VERSION)
   SET(BOOST_VERSION "BOOST_VERSION-NOTFOUND" CACHE STRING "Boost library version number")
 ENDIF()
-FIND_PACKAGE(Boost ${BOOST_VERSION} )
+FIND_PACKAGE(Boost ${BOOST_VERSION} REQUIRED COMPONENTS ${MLPACK_REQUIRED_BOOST_COMPONENTS})
 
 # Fetch TinyXML2 files. Do not build as a subproject
 FetchContent_Declare(
@@ -46,6 +74,19 @@ IF(NOT ${TinyXML2Name}_POPULATED)
   #Fetch TinyXML2 using the details from FetchContent_Declare 	
   FetchContent_Populate(TinyXML2)
 ENDIF()
+
+#Fetch the OpticalDensityThreshold respository. Do not build as a subproject
+FetchContent_Declare(
+  OpticalDensityThreshold
+  GIT_REPOSITORY https://github.com/sedeen-piip-plugins/OpticalDensityThreshold.git
+  GIT_TAG a91cd4f93146429e1d97f44e4e4ccfbd22af181a
+)
+FetchContent_GetProperties(OpticalDensityThreshold)
+STRING(TOLOWER "OpticalDensityThreshold" OpticalDensityThresholdName)
+IF(NOT ${OpticalDensityThresholdName}_POPULATED)
+  FetchContent_Populate(OpticalDensityThreshold)
+ENDIF()
+SET(OPTICAL_DENSITY_THRESHOLD_DIR ${${OpticalDensityThresholdName}_SOURCE_DIR})
 
 # Fetch the StainAnalysis-plugin repository. Do not build as a subproject
 FetchContent_Declare(
@@ -68,12 +109,19 @@ INCLUDE_DIRECTORIES( ${INCLUDE_DIRECTORIES}
                      ${SEDEENSDK_OPENCV_INCLUDE_DIR}
                      ${BOOST_ROOT} 
                      ${${TinyXML2Name}_SOURCE_DIR}
+                     ${OPTICAL_DENSITY_THRESHOLD_DIR}
                      ${STAIN_ANALYSIS_DIR}
+                     ${MLPACK_INCLUDE_DIR}
+                     ${ARMADILLO_INCLUDE_DIR}
                      )
 
 LINK_DIRECTORIES( ${LINK_DIRECTORIES} 
                   ${SEDEENSDK_LIBRARY_DIR} 
                   ${SEDEENSDK_OPENCV_LIBRARY_DIR}
+                  ${MLPACK_LIBRARY_DIR}
+                  ${ARMADILLO_LIBRARY_DIR}
+                  ${LAPACK_STATIC_LIBRARY_DIR}
+                  ${BLAS_STATIC_LIBRARY_DIR}
                   )
 
 ADD_LIBRARY( ${PROJECT_NAME} MODULE 
@@ -81,6 +129,9 @@ ADD_LIBRARY( ${PROJECT_NAME} MODULE
              ${PROJECT_NAME}.h 
              ${${TinyXML2Name}_SOURCE_DIR}/tinyxml2.h 
              ${${TinyXML2Name}_SOURCE_DIR}/tinyxml2.cpp
+             ${OPTICAL_DENSITY_THRESHOLD_DIR}/ODConversion.h
+             ${OPTICAL_DENSITY_THRESHOLD_DIR}/ODThresholdKernel.h
+             ${OPTICAL_DENSITY_THRESHOLD_DIR}/ODThresholdKernel.cpp
              ${STAIN_ANALYSIS_DIR}/StainProfile.h 
              ${STAIN_ANALYSIS_DIR}/StainProfile.cpp 
              ${STAIN_ANALYSIS_DIR}/ColorDeconvolutionKernel.h 
@@ -89,11 +140,38 @@ ADD_LIBRARY( ${PROJECT_NAME} MODULE
              ${STAIN_ANALYSIS_DIR}/StainVectorMath.cpp
              ${STAIN_ANALYSIS_DIR}/StainRGBFromROI.h
              ${STAIN_ANALYSIS_DIR}/StainRGBFromROI.cpp
+             ${STAIN_ANALYSIS_DIR}/RandomWSISampler.h
+             ${STAIN_ANALYSIS_DIR}/RandomWSISampler.cpp
+             ${STAIN_ANALYSIS_DIR}/StainVectorBase.h 
+             ${STAIN_ANALYSIS_DIR}/StainVectorBase.cpp
+             ${STAIN_ANALYSIS_DIR}/StainVectorOpenCV.h 
+             ${STAIN_ANALYSIS_DIR}/StainVectorOpenCV.cpp
+             ${STAIN_ANALYSIS_DIR}/StainVectorMLPACK.h 
+             ${STAIN_ANALYSIS_DIR}/StainVectorMLPACK.cpp
+             ${STAIN_ANALYSIS_DIR}/StainVectorPixelROI.h 
+             ${STAIN_ANALYSIS_DIR}/StainVectorPixelROI.cpp
+             ${STAIN_ANALYSIS_DIR}/StainVectorMacenko.h 
+             ${STAIN_ANALYSIS_DIR}/StainVectorMacenko.cpp
+             ${STAIN_ANALYSIS_DIR}/StainVectorNMF.h 
+             ${STAIN_ANALYSIS_DIR}/StainVectorNMF.cpp 
+             ${STAIN_ANALYSIS_DIR}/BasisTransform.h 
+             ${STAIN_ANALYSIS_DIR}/BasisTransform.cpp
+             ${STAIN_ANALYSIS_DIR}/AngleHistogram.h 
+             ${STAIN_ANALYSIS_DIR}/AngleHistogram.cpp
+             ${STAIN_ANALYSIS_DIR}/MacenkoHistogram.h 
+             ${STAIN_ANALYSIS_DIR}/MacenkoHistogram.cpp
              )
 
 # Link the library against the Sedeen SDK libraries
-TARGET_LINK_LIBRARIES( ${PROJECT_NAME} ${SEDEENSDK_LIBRARIES} 
-                       ${SEDEENSDK_OPENCV_LIBRARIES} )
+TARGET_LINK_LIBRARIES( ${PROJECT_NAME} 
+                       ${SEDEENSDK_LIBRARIES} 
+                       ${SEDEENSDK_OPENCV_LIBRARIES} 
+                       ${MLPACK_LIBRARIES}
+                       ${MLPACK_REQUIRED_BOOST_LIBRARIES}
+                       ${ARMADILLO_LIBRARY}
+                       ${LAPACK_STATIC_LIBRARY}
+                       ${BLAS_STATIC_LIBRARY}
+                       )
 
 # Create or update the .info file in the build directory
 STRING( TIMESTAMP DATE_CREATED_TEXT "%Y-%m-%d" )
@@ -115,13 +193,17 @@ ENDIF()
 
 # Install the plugin and .info file in the PLUGIN_DESTINATION_DIR directory
 IF( ${SEDEEN_FOUND} )
-  INSTALL(TARGETS ${PROJECT_NAME}
-      LIBRARY DESTINATION "${PLUGIN_DESTINATION_DIR}")
+  INSTALL(TARGETS ${PROJECT_NAME} LIBRARY 
+     DESTINATION "${PLUGIN_DESTINATION_DIR}")
   INSTALL(FILES "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.info"
-      DESTINATION "${PLUGIN_DESTINATION_DIR}")
+     DESTINATION "${PLUGIN_DESTINATION_DIR}" )
   INSTALL(DIRECTORY "${SEDEENSDK_DIR}/bin/" 
-      DESTINATION "${PLUGIN_DESTINATION_DIR}" 
-      FILES_MATCHING PATTERN "opencv*0.dll" )
+     DESTINATION "${PLUGIN_DESTINATION_DIR}" 
+     FILES_MATCHING PATTERN "opencv*0.dll" )
+  INSTALL(FILES "${LAPACK_DYNAMIC_LIBRARY}" 
+     DESTINATION "${PLUGIN_DESTINATION_DIR}" )
+  INSTALL(FILES "${BLAS_DYNAMIC_LIBRARY}" 
+     DESTINATION "${PLUGIN_DESTINATION_DIR}" )
 ENDIF()
 
 #For debugging: shows all variables and their values

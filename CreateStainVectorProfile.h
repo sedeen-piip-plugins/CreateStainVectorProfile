@@ -1,6 +1,6 @@
 /*=============================================================================
  *
- *  Copyright (c) 2019 Sunnybrook Research Institute
+ *  Copyright (c) 2020 Sunnybrook Research Institute
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a copy
  *  of this software and associated documentation files (the "Software"), to deal
@@ -84,8 +84,11 @@ private:
     DisplayAreaParameter m_displayArea;
     TextFieldParameter m_nameOfStainProfile;
     OptionParameter m_numberOfStainComponents;
+    
+    ///Choices are Manual Regions-of-Interest, Macenko Decomposition, Non-Negative Matrix Factorization
+    OptionParameter m_stainSeparationAlgorithm;
 
-	//TODO: switch from single region per stain to multiple (RegionListParameter)
+
     //Stain One
     TextFieldParameter m_nameOfStainOne;
     //RegionListParameter m_regionListStainOne;
@@ -99,7 +102,6 @@ private:
     //RegionListParameter m_regionListStainThree;
 	GraphicItemParameter m_regionStainThree;
 
-    OptionParameter m_stainSeparationAlgorithm;
     OptionParameter m_stainToDisplay;
     BoolParameter m_applyThreshold;
     /// User defined Threshold value.
