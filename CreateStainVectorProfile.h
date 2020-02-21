@@ -62,7 +62,7 @@ private:
 
     ///Define the save file dialog options outside of init
     sedeen::file::FileDialogOptions defineSaveFileDialogOptions();
-
+    
 	/// Creates the Color Deconvolution pipeline with a cache
 	//
 	/// \return 
@@ -85,9 +85,22 @@ private:
     TextFieldParameter m_nameOfStainProfile;
     OptionParameter m_numberOfStainComponents;
     
+    ///Analysis model is how to create stain vectors, and there is one choice: Ruifrok and Johnston
+    OptionParameter m_stainAnalysisModel;
+
     ///Choices are Manual Regions-of-Interest, Macenko Decomposition, Non-Negative Matrix Factorization
     OptionParameter m_stainSeparationAlgorithm;
 
+    ///If using Macenko or NNMF, this determines whether to use all available pixels or not (NOT is the better choice)
+    BoolParameter m_useSubsampleOfPixels;
+
+    ///If useSubsampleOfPixels is True, set the number of pixels to sample from the WSI as m x 10^n
+    algorithm::DoubleParameter  m_subsamplePixelsMantissa;
+    ///Order of magnitude for the subsample of pixels
+    algorithm::IntegerParameter m_subsamplePixelsMagnitude;
+
+    ///Set the optical density threshold to omit pixels before computing stain vectors
+    algorithm::DoubleParameter m_preComputationThreshold;
 
     //Stain One
     TextFieldParameter m_nameOfStainOne;
@@ -103,9 +116,9 @@ private:
 	GraphicItemParameter m_regionStainThree;
 
     OptionParameter m_stainToDisplay;
-    BoolParameter m_applyThreshold;
-    /// User defined Threshold value.
-    algorithm::DoubleParameter m_threshold;
+    BoolParameter m_applyDisplayThreshold;
+    /// User defined Threshold value for DISPLAY of the image (not computation).
+    algorithm::DoubleParameter m_displayThreshold;
 
     BoolParameter m_showPreviewOnly;
     SaveFileDialogParameter m_saveFileAs;
@@ -120,11 +133,16 @@ private:
 
 private:
     //Member variables
-	std::vector<std::string> m_separationAlgorithmOptions;
-    std::vector<std::string> m_numComponentsOptions;
+    const std::vector<std::string> m_numComponentsOptions;
+    std::vector<std::string> m_stainAnalysisModelOptions;
+    std::vector<std::string> m_separationAlgorithmOptions;
     std::vector<std::string> m_stainToDisplayOptions;
-    double m_thresholdDefaultVal;
-    double m_thresholdMaxVal;
+    double m_subsampleMantissaDefaultVal;
+    int    m_subsampleMagnitudeDefaultVal;
+    double m_computationThresholdDefaultVal;
+    double m_computationThresholdMaxVal;
+    double m_displayThresholdDefaultVal;
+    double m_displayThresholdMaxVal;
 
     ///The stain vector profile and its XML file handling
     std::shared_ptr<StainProfile> m_localStainProfile;
