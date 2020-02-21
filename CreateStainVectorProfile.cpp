@@ -67,36 +67,46 @@ CreateStainVectorProfile::CreateStainVectorProfile()
     m_regionStainTwo(),
     m_nameOfStainThree(),
     m_regionStainThree(),
+    m_stainAnalysisModel(),
     m_stainSeparationAlgorithm(),
+    m_useSubsampleOfPixels(),
+    m_subsamplePixelsMantissa(),
+    m_subsamplePixelsMagnitude(),
+    m_preComputationThreshold(),
     m_stainToDisplay(),
-    m_applyThreshold(),
-    m_threshold(),
+    m_applyDisplayThreshold(),
+    m_displayThreshold(),
     m_showPreviewOnly(),
     m_saveFileAs(),
 	m_result(),
 	m_outputText(),
 	m_report(""),
-    m_thresholdDefaultVal(20.0),
-    m_thresholdMaxVal(300.0),
-	m_colorDeconvolution_factory(nullptr)
-{
+    m_subsampleMantissaDefaultVal(1.0),
+    m_subsampleMagnitudeDefaultVal(5),
+    m_computationThresholdDefaultVal(15.0),
+    m_computationThresholdMaxVal(300.0),
+    m_displayThresholdDefaultVal(20.0),
+    m_displayThresholdMaxVal(300.0),
+	m_colorDeconvolution_factory(nullptr),
     //Define the numberOfStainComponents options
-    //TEMP: rely on the text and the index being the same
-    m_numComponentsOptions.push_back("0");
-    m_numComponentsOptions.push_back("1");
-    m_numComponentsOptions.push_back("2");
-    m_numComponentsOptions.push_back("3");
-
-	//Define the list of available stain separation algorithms
-	m_separationAlgorithmOptions.push_back("Ruifrok+Johnston Deconvolution");
-
-    //Define the default list of names of stains to display
+    m_numComponentsOptions({"0", "1", "2", "3"})
+{
+    //Define the default list of names of stains to display (someday I hope these can be mutable)
     m_stainToDisplayOptions.push_back("Stain 1");
     m_stainToDisplayOptions.push_back("Stain 2");
     m_stainToDisplayOptions.push_back("Stain 3");
 
+    //Populate the analysis model and separation algorithm lists with a temporary StainProfile
+    auto tempStainProfile = std::make_shared<StainProfile>();
+    //The stain analysis model options
+    m_stainAnalysisModelOptions = tempStainProfile->GetStainAnalysisModelOptions();
+    //The stain separation algorithm options
+    m_separationAlgorithmOptions = tempStainProfile->GetStainSeparationAlgorithmOptions();
+    //Clean up
+    tempStainProfile.reset();
+
     //Create a stain vector profile. It is only updated in the 'run' method
-    //A list of available stain separation algorithms is defined in its constructor
+    //Lists of available analysis models and separation algorithms are defined in its constructor
     m_localStainProfile = std::make_shared<StainProfile>();
 
 }//end constructor
@@ -121,6 +131,40 @@ void CreateStainVectorProfile::init(const image::ImageHandle& image) {
     m_numberOfStainComponents = createOptionParameter(*this, "Number of Stain Components", 
         "Choose the number of stains in the image", 0, m_numComponentsOptions, false);
 
+    //The displayed list of available stain analysis models (one: stain deconvolution)
+    m_stainAnalysisModel = createOptionParameter(*this, "Stain Analysis Model",
+        "Select the analysis model to use (currently one option: stain deconvolution)", 0,
+        m_stainAnalysisModelOptions, false);
+
+    //The displayed list of available stain separation algorithms
+    m_stainSeparationAlgorithm = createOptionParameter(*this, "Separation Algorithm",
+        "Select the stain separation algorithm to use to separate the stain components", 0,
+        m_separationAlgorithmOptions, false);
+
+    m_useSubsampleOfPixels = createBoolParameter(*this, "Use sub-sample of pixels",
+        "If checked, only a sub-set of the total number of pixels will be used to compute the stain vectors",
+        true, false); //default value, optional
+
+    m_subsamplePixelsMantissa = createDoubleParameter(*this, "Num pixels order of magnitude",
+        "The number of pixels to include in a sub-sample for stain vector computation is set using two values: the mantissa and the order of magnitude (m x 10^n)", 
+        m_subsampleMantissaDefaultVal, 0.0, 10.0, false);
+
+    auto imageSize = sedeen::image::getDimensions(image, 0);
+    int maxPower = std::ceil((std::log10(static_cast<double>(imageSize.width()*imageSize.height()))));
+    int magDefaultVal = (m_subsampleMagnitudeDefaultVal <= maxPower) ? m_subsampleMagnitudeDefaultVal : maxPower;
+    m_subsamplePixelsMagnitude = createIntegerParameter(*this, "Num pixels (sci notation: m x 10^n)",
+        "The number of pixels to include in a sub-sample for stain vector computation is set using two values: the mantissa and the order of magnitude (m x 10^n)",
+        magDefaultVal, 0, maxPower, false);
+
+    //Set the threshold applied before computing the stain vectors (by whichever method)
+    m_preComputationThreshold = createDoubleParameter(*this,
+        "Computation OD x100 Threshold",   // Widget label
+        "Threshold applied before computing stain vectors (threshold for display is set below)",
+        m_computationThresholdDefaultVal, // Initial value
+        0.0,                              // minimum value
+        m_computationThresholdMaxVal,     // maximum value
+        false);
+
     //Names of stains and ROIs associated with them
     m_nameOfStainOne = createTextFieldParameter(*this, "Name of Stain 1",
         "Enter the name of a stain in the image", "", true);
@@ -143,32 +187,24 @@ void CreateStainVectorProfile::init(const image::ImageHandle& image) {
 	m_regionStainThree = createGraphicItemParameter(*this, "Stain 3 Region",
 		"Region of Interest for Stain 3", true);
 
-	//Get the list of available stain separation algorithms from a temp StainProfile object
-	auto tempStainProfile = std::make_shared<StainProfile>();
-	std::vector<std::string> tempStainSeparationOptions = tempStainProfile->GetstainSeparationAlgorithmOptions();
-	tempStainProfile.reset();
-	m_stainSeparationAlgorithm = createOptionParameter(*this, "Stain Separation Algorithm",
-        "Select the stain separation algorithm to use to separate the stain components", 0, 
-        tempStainSeparationOptions, false);
-
     //List of options of the stains currently defined, to show in preview
     m_stainToDisplay = createOptionParameter(*this, "Show Separated Stain", 
         "Choose which of the defined stains to preview in the display area", 0, m_stainToDisplayOptions, false);
  
     //User can choose whether to apply the threshold or not
-    m_applyThreshold = createBoolParameter(*this, "Display with Threshold Applied",
+    m_applyDisplayThreshold = createBoolParameter(*this, "Display with Threshold Applied",
         "If Display with Threshold Applied is set, the threshold value in the slider below will be applied to the stain-separated image",
         true, false); //default value, optional
 
     // Init the user defined threshold value
     //TEMPORARY!! Can't set precision on DoubleParameter right now, so use 1/100 downscale
-    auto color = getColorSpace(image);
-    m_threshold = createDoubleParameter(*this,
-        "OD x100 Threshold",   // Widget label
-        "A Threshold value",   // Widget tooltip
-        m_thresholdDefaultVal, // Initial value
-        0.0,                   // minimum value
-        m_thresholdMaxVal,     // maximum value
+    //auto color = getColorSpace(image);
+    m_displayThreshold = createDoubleParameter(*this,
+        "Display OD x100 Threshold",   // Widget label
+        "Threshold applied to the DISPLAYED image (the threshold to use when computing stain vectors is a separate slider)",   // Widget tooltip
+        m_displayThresholdDefaultVal, // Initial value
+        0.0,                          // minimum value
+        m_displayThresholdMaxVal,     // maximum value
         false);
 
     //Allow the user to create visible output, without saving the stain vector profile to a file
@@ -232,7 +268,7 @@ void CreateStainVectorProfile::run() {
         //Get the text of the name of the stain separation algorithm from the vector
         //of names stored in the localStainProfile
         int stainAlgNumber = m_stainSeparationAlgorithm;
-        std::string stainAlgName = theProfile->GetstainSeparationAlgorithmName(stainAlgNumber);
+        std::string stainAlgName = theProfile->GetStainSeparationAlgorithmName(stainAlgNumber);
         theProfile->SetNameOfStainSeparationAlgorithm(stainAlgName);
 
         //Calculate the stain vectors and build the operational pipeline
@@ -313,6 +349,12 @@ bool CreateStainVectorProfile::checkParametersChanged(bool somethingChanged) {
     if (somethingChanged
         || m_nameOfStainProfile.isChanged()
         || m_numberOfStainComponents.isChanged()
+        || m_stainAnalysisModel.isChanged()
+        || m_stainSeparationAlgorithm.isChanged()
+        || m_useSubsampleOfPixels.isChanged()
+        || m_subsamplePixelsMantissa.isChanged()
+        || m_subsamplePixelsMagnitude.isChanged()
+        || m_preComputationThreshold.isChanged()
         || m_nameOfStainOne.isChanged()
         || m_regionStainOne.isChanged()
         || m_nameOfStainTwo.isChanged()
@@ -321,8 +363,8 @@ bool CreateStainVectorProfile::checkParametersChanged(bool somethingChanged) {
         || m_regionStainThree.isChanged()
         || m_stainSeparationAlgorithm.isChanged()
         || m_stainToDisplay.isChanged()
-        || m_applyThreshold.isChanged()
-        || m_threshold.isChanged()
+        || m_applyDisplayThreshold.isChanged()
+        || m_displayThreshold.isChanged()
         || m_showPreviewOnly.isChanged()
         || m_displayArea.isChanged()
         || (nullptr == m_colorDeconvolution_factory))
@@ -424,7 +466,7 @@ bool CreateStainVectorProfile::buildPipeline(std::shared_ptr<StainProfile> thePr
     //because it is not possible to set the precision of a double parameter as of Sedeen 5.4.1
     auto colorDeconvolution_kernel =
         std::make_shared<image::tile::ColorDeconvolution>(DisplayOption, theProfile,
-            m_applyThreshold, m_threshold/100.0);  //Need to tell it whether to use the threshold or not
+            m_applyDisplayThreshold, m_displayThreshold/100.0);  //Need to tell it whether to use the threshold or not
 
     // Create a Factory for the composition of these Kernels
     auto non_cached_factory =
