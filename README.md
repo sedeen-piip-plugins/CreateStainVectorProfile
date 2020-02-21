@@ -11,7 +11,7 @@ This is a Sedeen plugin to select stained regions using ROIs, and generate stain
 Pending.
 
 ## Authors
-Create Stain Vector Profile was developed by **Michael Schumaker** and **Azadeh Yazanpanah**, Anne Martel's lab at Sunnybrook Research Institute (SRI), University of Toronto and was partially funded by an NIH grant.
+Create Stain Vector Profile was developed by **Michael Schumaker** and **Azadeh Yazanpanah**, Anne Martel's lab at Sunnybrook Research Institute (SRI), University of Toronto and was partially funded by [NIH grant](https://itcr.cancer.gov/funding-opportunities/pathology-image-informatics-platform-visualization-analysis-and-management).
 
 ## Copyright & License
 

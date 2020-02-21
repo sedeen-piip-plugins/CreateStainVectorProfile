@@ -1,6 +1,6 @@
 /*=============================================================================
  *
- *  Copyright (c) 2019 Sunnybrook Research Institute
+ *  Copyright (c) 2020 Sunnybrook Research Institute
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a copy
  *  of this software and associated documentation files (the "Software"), to deal
@@ -145,7 +145,7 @@ void CreateStainVectorProfile::init(const image::ImageHandle& image) {
 
 	//Get the list of available stain separation algorithms from a temp StainProfile object
 	auto tempStainProfile = std::make_shared<StainProfile>();
-	std::vector<std::string> tempStainSeparationOptions = tempStainProfile->GetStainSeparationAlgorithmOptions();
+	std::vector<std::string> tempStainSeparationOptions = tempStainProfile->GetstainSeparationAlgorithmOptions();
 	tempStainProfile.reset();
 	m_stainSeparationAlgorithm = createOptionParameter(*this, "Stain Separation Algorithm",
         "Select the stain separation algorithm to use to separate the stain components", 0, 
@@ -232,7 +232,7 @@ void CreateStainVectorProfile::run() {
         //Get the text of the name of the stain separation algorithm from the vector
         //of names stored in the localStainProfile
         int stainAlgNumber = m_stainSeparationAlgorithm;
-        std::string stainAlgName = theProfile->GetStainSeparationAlgorithmName(stainAlgNumber);
+        std::string stainAlgName = theProfile->GetstainSeparationAlgorithmName(stainAlgNumber);
         theProfile->SetNameOfStainSeparationAlgorithm(stainAlgName);
 
         //Calculate the stain vectors and build the operational pipeline
