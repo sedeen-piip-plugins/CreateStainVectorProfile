@@ -81,12 +81,15 @@ CreateStainVectorProfile::CreateStainVectorProfile()
 	m_result(),
 	m_outputText(),
 	m_report(""),
+    //Set member const values
     m_subsampleMantissaDefaultVal(1.0),
     m_subsampleMagnitudeDefaultVal(5),
     m_computationThresholdDefaultVal(15.0),
     m_computationThresholdMaxVal(300.0),
     m_displayThresholdDefaultVal(20.0),
     m_displayThresholdMaxVal(300.0),
+    m_algorithmPercentileDefaultVal(1.0),
+    m_algorithmHistogramBinsDefaultVal(1024),
 	m_colorDeconvolution_factory(nullptr),
     //Define the numberOfStainComponents options
     m_numComponentsOptions({"0", "1", "2", "3"})
@@ -114,7 +117,6 @@ CreateStainVectorProfile::CreateStainVectorProfile()
 ///Destructor
 CreateStainVectorProfile::~CreateStainVectorProfile() {
 }//end destructor
-
 
 ///Initial setup of the plugin
 void CreateStainVectorProfile::init(const image::ImageHandle& image) {
@@ -145,20 +147,20 @@ void CreateStainVectorProfile::init(const image::ImageHandle& image) {
         "If checked, only a sub-set of the total number of pixels will be used to compute the stain vectors",
         true, false); //default value, optional
 
-    m_subsamplePixelsMantissa = createDoubleParameter(*this, "Num pixels order of magnitude",
+    m_subsamplePixelsMantissa = createDoubleParameter(*this, "Num pixels (sci notation: m x 10^n)",
         "The number of pixels to include in a sub-sample for stain vector computation is set using two values: the mantissa and the order of magnitude (m x 10^n)", 
         m_subsampleMantissaDefaultVal, 0.0, 10.0, false);
 
     auto imageSize = sedeen::image::getDimensions(image, 0);
-    int maxPower = std::ceil((std::log10(static_cast<double>(imageSize.width()*imageSize.height()))));
+    int maxPower = static_cast<int>(std::ceil((std::log10(static_cast<double>(imageSize.width()*imageSize.height())))));
     int magDefaultVal = (m_subsampleMagnitudeDefaultVal <= maxPower) ? m_subsampleMagnitudeDefaultVal : maxPower;
-    m_subsamplePixelsMagnitude = createIntegerParameter(*this, "Num pixels (sci notation: m x 10^n)",
+    m_subsamplePixelsMagnitude = createIntegerParameter(*this, "Num pixels order of magnitude",
         "The number of pixels to include in a sub-sample for stain vector computation is set using two values: the mantissa and the order of magnitude (m x 10^n)",
         magDefaultVal, 0, maxPower, false);
 
     //Set the threshold applied before computing the stain vectors (by whichever method)
     m_preComputationThreshold = createDoubleParameter(*this,
-        "Computation OD x100 Threshold",   // Widget label
+        "OD x100 Threshold (pre-computation)",   // Widget label
         "Threshold applied before computing stain vectors (threshold for display is set below)",
         m_computationThresholdDefaultVal, // Initial value
         0.0,                              // minimum value
@@ -200,7 +202,7 @@ void CreateStainVectorProfile::init(const image::ImageHandle& image) {
     //TEMPORARY!! Can't set precision on DoubleParameter right now, so use 1/100 downscale
     //auto color = getColorSpace(image);
     m_displayThreshold = createDoubleParameter(*this,
-        "Display OD x100 Threshold",   // Widget label
+        "OD x100 Threshold (display)",   // Widget label
         "Threshold applied to the DISPLAYED image (the threshold to use when computing stain vectors is a separate slider)",   // Widget tooltip
         m_displayThresholdDefaultVal, // Initial value
         0.0,                          // minimum value
@@ -223,6 +225,29 @@ void CreateStainVectorProfile::init(const image::ImageHandle& image) {
     m_result = createImageResult(*this, " StainAnalysisResult");
 
 }//end init
+
+void CreateStainVectorProfile::initialVisibility() {
+    m_nameOfStainProfile.setVisible(true);
+    m_numberOfStainComponents.setVisible(true);
+    m_stainAnalysisModel.setVisible(false);
+    m_stainSeparationAlgorithm.setVisible(true);
+    m_useSubsampleOfPixels.setVisible(true);
+    m_subsamplePixelsMantissa.setVisible(true);
+    m_subsamplePixelsMagnitude.setVisible(true);
+    m_preComputationThreshold.setVisible(true);
+
+    m_nameOfStainOne.setVisible(true);
+    m_regionStainOne.setVisible(true);
+    m_nameOfStainTwo.setVisible(true);
+    m_regionStainTwo.setVisible(true);
+    m_nameOfStainThree.setVisible(true);
+    m_regionStainThree.setVisible(true);
+
+    m_stainToDisplay.setVisible(true);
+    m_applyDisplayThreshold.setVisible(true);
+    m_showPreviewOnly.setVisible(true);
+    m_saveFileAs.setVisible(true);
+}//end initialVisibility
 
 ///Method called when the 'Run' button is clicked
 void CreateStainVectorProfile::run() {
@@ -264,12 +289,49 @@ void CreateStainVectorProfile::run() {
         theProfile->SetNameOfStainOne(m_nameOfStainOne);
         theProfile->SetNameOfStainTwo(m_nameOfStainTwo);
         theProfile->SetNameOfStainThree(m_nameOfStainThree);
+
+        //The implicit conversion for m_stainAnalysisModel is an int of the option number
+        //Get the text of the name of the stain analysis model from the vector of
+        //names stored in the localStainProfile
+        int stainModelNumber = m_stainAnalysisModel;
+        std::string stainModelName = theProfile->GetStainAnalysisModelName(stainModelNumber);
+        theProfile->SetNameOfStainAnalysisModel(stainModelName);
+
         //The implicit conversion for m_stainSeparationAlgorithm is an int of the option number
-        //Get the text of the name of the stain separation algorithm from the vector
-        //of names stored in the localStainProfile
+        //Get the text of the name of the stain separation algorithm from the vector of
+        //names stored in the localStainProfile
         int stainAlgNumber = m_stainSeparationAlgorithm;
         std::string stainAlgName = theProfile->GetStainSeparationAlgorithmName(stainAlgNumber);
         theProfile->SetNameOfStainSeparationAlgorithm(stainAlgName);
+
+
+        //Test writing parameter values to the stain profile. Need to get percentile, num histogram bins from Macenko
+        //set computation threshold and number of pixels used, if NNMF or Macenko
+
+        //number of pixels and the threshold can both be obtained from the GUI parameters
+        //It is possible for this value to exceed the size of a 32-bit int, so use long
+        double numPixelsDouble = m_subsamplePixelsMantissa * std::pow(10.0, m_subsamplePixelsMagnitude);
+        long int numPixels = static_cast<long int>(numPixelsDouble);
+        double compThreshold = m_preComputationThreshold;
+
+        //For the Mackenko (and Niethammer) method, set the percentile limit 
+        //and number of bins in the histogram from the default values set in this class
+        double percentileThreshold = m_algorithmPercentileDefaultVal;
+        int numHistoBins = m_algorithmHistogramBinsDefaultVal;
+
+        //Set the four parameter values
+        theProfile->SetSeparationAlgorithmNumPixelsParameter(numPixels);
+        theProfile->SetSeparationAlgorithmThresholdParameter(compThreshold);
+        theProfile->SetSeparationAlgorithmPercentileParameter(percentileThreshold);
+        theProfile->SetSeparationAlgorithmHistogramBinsParameter(numHistoBins);
+
+
+        //test clear the analysis model parameters
+        theProfile->ClearAnalysisModelParameters();
+        //Test setting a single value
+        theProfile->SetSingleAnalysisModelParameter(theProfile->pTypeNumPixels(), "12345");
+
+
 
         //Calculate the stain vectors and build the operational pipeline
         bool buildSuccessful = buildPipeline(theProfile);
@@ -277,6 +339,10 @@ void CreateStainVectorProfile::run() {
             m_outputText.sendText("Could not calculate the stain vectors. Please check your regions of interest and try again.");
             return;
         }
+
+
+
+
 
         //A previous version included an "intermediate result" here, to display
         //a blurry temporary image (rather than just black) while calculations proceeded
@@ -361,7 +427,6 @@ bool CreateStainVectorProfile::checkParametersChanged(bool somethingChanged) {
         || m_regionStainTwo.isChanged()
         || m_nameOfStainThree.isChanged()
         || m_regionStainThree.isChanged()
-        || m_stainSeparationAlgorithm.isChanged()
         || m_stainToDisplay.isChanged()
         || m_applyDisplayThreshold.isChanged()
         || m_displayThreshold.isChanged()
