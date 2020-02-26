@@ -60,6 +60,9 @@ private:
     virtual void run();
     virtual void init(const image::ImageHandle& image);
 
+    ///Set the visibility of GUI elements at the end of init
+    void initialVisibility();
+
     ///Define the save file dialog options outside of init
     sedeen::file::FileDialogOptions defineSaveFileDialogOptions();
     
@@ -137,12 +140,15 @@ private:
     std::vector<std::string> m_stainAnalysisModelOptions;
     std::vector<std::string> m_separationAlgorithmOptions;
     std::vector<std::string> m_stainToDisplayOptions;
-    double m_subsampleMantissaDefaultVal;
-    int    m_subsampleMagnitudeDefaultVal;
-    double m_computationThresholdDefaultVal;
-    double m_computationThresholdMaxVal;
-    double m_displayThresholdDefaultVal;
-    double m_displayThresholdMaxVal;
+    const double m_subsampleMantissaDefaultVal;
+    const int    m_subsampleMagnitudeDefaultVal;
+    const double m_computationThresholdDefaultVal;
+    const double m_computationThresholdMaxVal;
+    const double m_displayThresholdDefaultVal;
+    const double m_displayThresholdMaxVal;
+
+    const double m_algorithmPercentileDefaultVal;
+    const int    m_algorithmHistogramBinsDefaultVal;
 
     ///The stain vector profile and its XML file handling
     std::shared_ptr<StainProfile> m_localStainProfile;
