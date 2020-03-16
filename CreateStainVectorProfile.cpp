@@ -226,28 +226,31 @@ void CreateStainVectorProfile::init(const image::ImageHandle& image) {
 
 }//end init
 
-void CreateStainVectorProfile::initialVisibility() {
-    m_nameOfStainProfile.setVisible(true);
-    m_numberOfStainComponents.setVisible(true);
-    m_stainAnalysisModel.setVisible(false);
-    m_stainSeparationAlgorithm.setVisible(true);
-    m_useSubsampleOfPixels.setVisible(true);
-    m_subsamplePixelsMantissa.setVisible(true);
-    m_subsamplePixelsMagnitude.setVisible(true);
-    m_preComputationThreshold.setVisible(true);
-
-    m_nameOfStainOne.setVisible(true);
-    m_regionStainOne.setVisible(true);
-    m_nameOfStainTwo.setVisible(true);
-    m_regionStainTwo.setVisible(true);
-    m_nameOfStainThree.setVisible(true);
-    m_regionStainThree.setVisible(true);
-
-    m_stainToDisplay.setVisible(true);
-    m_applyDisplayThreshold.setVisible(true);
-    m_showPreviewOnly.setVisible(true);
-    m_saveFileAs.setVisible(true);
-}//end initialVisibility
+//void CreateStainVectorProfile::initialVisibility() {
+//    //This doesn't work as planned. It's not possible to
+//    //set the visibility (to true or false) at the init stage.
+//    //The program crashes.
+//    m_nameOfStainProfile.setVisible(true);
+//    m_numberOfStainComponents.setVisible(true);
+//    m_stainAnalysisModel.setVisible(false);
+//    m_stainSeparationAlgorithm.setVisible(true);
+//    m_useSubsampleOfPixels.setVisible(true);
+//    m_subsamplePixelsMantissa.setVisible(true);
+//    m_subsamplePixelsMagnitude.setVisible(true);
+//    m_preComputationThreshold.setVisible(true);
+//
+//    m_nameOfStainOne.setVisible(true);
+//    m_regionStainOne.setVisible(true);
+//    m_nameOfStainTwo.setVisible(true);
+//    m_regionStainTwo.setVisible(true);
+//    m_nameOfStainThree.setVisible(true);
+//    m_regionStainThree.setVisible(true);
+//
+//    m_stainToDisplay.setVisible(true);
+//    m_applyDisplayThreshold.setVisible(true);
+//    m_showPreviewOnly.setVisible(true);
+//    m_saveFileAs.setVisible(true);
+//}//end initialVisibility
 
 ///Method called when the 'Run' button is clicked
 void CreateStainVectorProfile::run() {
@@ -304,45 +307,63 @@ void CreateStainVectorProfile::run() {
         std::string stainAlgName = theProfile->GetStainSeparationAlgorithmName(stainAlgNumber);
         theProfile->SetNameOfStainSeparationAlgorithm(stainAlgName);
 
-
-        //Test writing parameter values to the stain profile. Need to get percentile, num histogram bins from Macenko
-        //set computation threshold and number of pixels used, if NNMF or Macenko
-
         //number of pixels and the threshold can both be obtained from the GUI parameters
         //It is possible for this value to exceed the size of a 32-bit int, so use long
         double numPixelsDouble = m_subsamplePixelsMantissa * std::pow(10.0, m_subsamplePixelsMagnitude);
         long int numPixels = static_cast<long int>(numPixelsDouble);
-        double compThreshold = m_preComputationThreshold;
+        double compThreshold = m_preComputationThreshold / 100.0;
 
-        //For the Mackenko (and Niethammer) method, set the percentile limit 
+        //For the Macenko (and Niethammer) method, set the percentile limit 
         //and number of bins in the histogram from the default values set in this class
         double percentileThreshold = m_algorithmPercentileDefaultVal;
         int numHistoBins = m_algorithmHistogramBinsDefaultVal;
 
-        //Set the four parameter values
-        theProfile->SetSeparationAlgorithmNumPixelsParameter(numPixels);
-        theProfile->SetSeparationAlgorithmThresholdParameter(compThreshold);
-        theProfile->SetSeparationAlgorithmPercentileParameter(percentileThreshold);
-        theProfile->SetSeparationAlgorithmHistogramBinsParameter(numHistoBins);
+        //Set the analysis model and separation algorithm parameters
+        //The parameters required depend on the model/algorithm used
 
+        //There is currently only one analysis model, and it does not require any parameters
+        //analysis model 0: "Ruifrok+Johnston Deconvolution"
+        if (stainModelNumber == 0) {
+            //No parameters
 
-        //test clear the analysis model parameters
-        theProfile->ClearAnalysisModelParameters();
-        //Test setting a single value
-        theProfile->SetSingleAnalysisModelParameter(theProfile->pTypeNumPixels(), "12345");
+            //Test setting a single value
+            theProfile->SetSingleAnalysisModelParameter(theProfile->pTypeNumPixels(), "9");
 
+            //Try some other tests
 
-
-        //Calculate the stain vectors and build the operational pipeline
-        bool buildSuccessful = buildPipeline(theProfile);
-        if (!buildSuccessful) {
-            m_outputText.sendText("Could not calculate the stain vectors. Please check your regions of interest and try again.");
-            return;
+        }
+        else {
+            //No parameters
         }
 
+        //There are currently three separation algorithms
+        //analysis model 0: "Region-of-Interest Selection"
+        //analysis model 1: "Macenko Decomposition"
+        //analysis model 2: "Non-Negative Matrix Factorization"
+        if (stainAlgNumber == 0) { //"Region-of-Interest Selection"
+            //No parameters
+        }
+        else if (stainAlgNumber == 1) { //"Macenko Decomposition"
+            theProfile->SetSeparationAlgorithmNumPixelsParameter(numPixels);
+            theProfile->SetSeparationAlgorithmThresholdParameter(compThreshold);
+            theProfile->SetSeparationAlgorithmPercentileParameter(percentileThreshold);
+            theProfile->SetSeparationAlgorithmHistogramBinsParameter(numHistoBins);
+        }
+        else if (stainAlgNumber == 2) { //"Non-Negative Matrix Factorization"
+            theProfile->SetSeparationAlgorithmNumPixelsParameter(numPixels);
+            theProfile->SetSeparationAlgorithmThresholdParameter(compThreshold);
+        }
+        else {
+            //No parameters
+        }
 
-
-
+        //Calculate the stain vectors and build the operational pipeline
+        std::shared_ptr<std::string> errorMessage = std::make_shared<std::string>();
+        bool buildSuccessful = buildPipeline(theProfile, errorMessage);
+        if (!buildSuccessful) {
+            m_outputText.sendText(*errorMessage);
+            return;
+        }
 
         //A previous version included an "intermediate result" here, to display
         //a blurry temporary image (rather than just black) while calculations proceeded
@@ -442,13 +463,11 @@ bool CreateStainVectorProfile::checkParametersChanged(bool somethingChanged) {
     }
 }//end checkParametersChanged
 
-bool CreateStainVectorProfile::buildPipeline(std::shared_ptr<StainProfile> theProfile) {
+bool CreateStainVectorProfile::buildPipeline(std::shared_ptr<StainProfile> theProfile, std::shared_ptr<std::string> errorMessage) {
     using namespace image::tile;
     bool buildSuccessful = false;
-
-    // Get source image properties
+    // Get the factory of the source image
     auto source_factory = image()->getFactory();
-    auto source_color = source_factory->getColorSpace();
 
     //Choose value from the enumeration in ColorDeconvolution
     image::tile::ColorDeconvolution::DisplayOptions DisplayOption;
@@ -467,64 +486,23 @@ bool CreateStainVectorProfile::buildPipeline(std::shared_ptr<StainProfile> thePr
         break;
     }
 
-    //Build the color deconvolution channel
-    int numStains = m_numberOfStainComponents;
-    bool oneDefined   = m_regionStainOne.isUserDefined();
-    bool twoDefined   = m_regionStainTwo.isUserDefined();
-    bool threeDefined = m_regionStainThree.isUserDefined();
+    //split pipeline by which stain separation algorithm to use
+    bool subPipelineSuccessful = false;
+    int stainAlgNumber = m_stainSeparationAlgorithm;
+    if (stainAlgNumber == 0) { //"Region-of-Interest Selection"
+        subPipelineSuccessful = buildPixelROIPipeline(theProfile, errorMessage);
+    }
+    else if (stainAlgNumber == 1) { //"Macenko Decomposition"
+        subPipelineSuccessful = buildMacenkoPipeline(theProfile, errorMessage);
+    }
+    else if (stainAlgNumber == 2) { //"Non-Negative Matrix Factorization"
+        subPipelineSuccessful = buildNMFPipeline(theProfile, errorMessage);
+    }
+    else {
+        //No action
+    }
+    buildSuccessful = subPipelineSuccessful;
 
-    std::vector<std::shared_ptr<GraphicItemBase>> regionsOfInterestVector;
-    if ((numStains <= 0) || (numStains > 3)) {
-        return false;
-    }
-    else if (numStains > 0) {
-        if (oneDefined) {
-            std::shared_ptr<GraphicItemBase> region = m_regionStainOne;
-            regionsOfInterestVector.push_back(region);
-            Rect rect = containingRect(regionsOfInterestVector.at(0)->graphic());
-        }
-        else {
-            m_outputText.sendText("Stain 1 region of interest is not defined. Please define a region to use to calculate the stain vector.");
-            return false;
-        }
-    }
-    //These if statements are cumulative, not "else if"
-    if (numStains > 1) {
-        if (twoDefined) {
-            std::shared_ptr<GraphicItemBase> region = m_regionStainTwo;
-            regionsOfInterestVector.push_back(region);
-            Rect rect = containingRect(regionsOfInterestVector.at(1)->graphic());
-        }
-        else {
-            m_outputText.sendText("Stain 2 region of interest is not defined. Please define a region to use to calculate the stain vector.");
-            return false;
-        }
-    }
-    //Cumulative
-    if (numStains > 2) {
-        if (threeDefined) {
-            std::shared_ptr<GraphicItemBase> region = m_regionStainThree;
-            regionsOfInterestVector.push_back(region);
-            Rect rect = containingRect(regionsOfInterestVector.at(2)->graphic());
-        }
-        else {
-            m_outputText.sendText("Stain 3 region of interest is not defined. Please define a region to use to calculate the stain vector.");
-            return false;
-        }
-    }
-    //Pass the regions of interest to the getStainsComponents function
-    double conv_matrix[9] = { 0.0 };
-    auto display_resolution = getDisplayResolution(image(), m_displayArea);
-
-    sedeen::image::getStainsComponents(source_factory,
-        regionsOfInterestVector, display_resolution, conv_matrix);
-
-    //Assign the output of getStainsComponents to the StainProfile 
-    bool assignCheck = theProfile->SetProfilesFromDoubleArray(conv_matrix);
-
-    if (!assignCheck) {
-        return false;
-    }
 
     //Send information to the kernel
     //TEMPORARY! Note that the threshold value must be divided by 100 here,
@@ -541,9 +519,125 @@ bool CreateStainVectorProfile::buildPipeline(std::shared_ptr<StainProfile> thePr
     m_colorDeconvolution_factory =
         std::make_shared<Cache>(non_cached_factory, RecentCachePolicy(30));
 
-    buildSuccessful = true;
     return buildSuccessful;
 }//end buildPipeline
+
+
+
+bool CreateStainVectorProfile::buildPixelROIPipeline(std::shared_ptr<StainProfile> theProfile, std::shared_ptr<std::string> errorMessage) {
+    bool success = true;
+    bool errorVal = false;
+
+    // Get source image properties
+    auto source_factory = image()->getFactory();
+    //auto source_color = source_factory->getColorSpace();
+
+    int numStains = theProfile->GetNumberOfStainComponents();
+    //Which of the region selectors have regions specified?
+    bool oneDefined = m_regionStainOne.isUserDefined();
+    bool twoDefined = m_regionStainTwo.isUserDefined();
+    bool threeDefined = m_regionStainThree.isUserDefined();
+
+    std::vector<std::shared_ptr<GraphicItemBase>> regionsOfInterestVector;
+    if ((numStains <= 0) || (numStains > 3)) {
+        errorMessage->assign("Invalid number of stains chosen");
+        return false;
+    }
+    else if (numStains > 0) {
+        if (oneDefined) {
+            std::shared_ptr<GraphicItemBase> region = m_regionStainOne;
+            regionsOfInterestVector.push_back(region);
+            Rect rect = containingRect(regionsOfInterestVector.at(0)->graphic());
+        }
+        else {
+            errorMessage->assign("Stain 1 region of interest is not defined. Please define a region to use to calculate the stain vector.");
+            return false;
+        }
+    }
+    //These if statements are cumulative, not "else if"
+    if (numStains > 1) {
+        if (twoDefined) {
+            std::shared_ptr<GraphicItemBase> region = m_regionStainTwo;
+            regionsOfInterestVector.push_back(region);
+            Rect rect = containingRect(regionsOfInterestVector.at(1)->graphic());
+        }
+        else {
+            errorMessage->assign("Stain 2 region of interest is not defined. Please define a region to use to calculate the stain vector.");
+            return false;
+        }
+    }
+    //Cumulative
+    if (numStains > 2) {
+        if (threeDefined) {
+            std::shared_ptr<GraphicItemBase> region = m_regionStainThree;
+            regionsOfInterestVector.push_back(region);
+            Rect rect = containingRect(regionsOfInterestVector.at(2)->graphic());
+        }
+        else {
+            errorMessage->assign("Stain 3 region of interest is not defined. Please define a region to use to calculate the stain vector.");
+            return false;
+        }
+    }
+    //Pass the regions of interest to the getStainsComponents function
+    double conv_matrix[9] = { 0.0 };
+    auto display_resolution = getDisplayResolution(image(), m_displayArea);
+
+    sedeen::image::getStainsComponents(source_factory,
+        regionsOfInterestVector, display_resolution, conv_matrix);
+    //option of error return from here?
+    //errorMessage->assign("Could not calculate the stain vectors. Please check your regions of interest and try again.");
+
+    //Assign the output of getStainsComponents to the StainProfile 
+    bool assignCheck = theProfile->SetProfilesFromDoubleArray(conv_matrix);
+
+    if (!assignCheck) {
+        errorMessage->assign("Could not assign the computed stain vectors to the stain profile.");
+        return false;
+    }
+    //else
+    errorMessage->assign("Stain vector computation successful.");
+    return true;
+}//end buildPixelROIPipeline
+
+
+
+bool CreateStainVectorProfile::buildMacenkoPipeline(std::shared_ptr<StainProfile> theProfile, std::shared_ptr<std::string> errorMessage) {
+    bool success = true;
+    bool errorVal = false;
+    //This pipeline only works for two stains
+    //if there are the wrong number of stains, return error
+    errorMessage->assign("Wrong number of stains");
+
+
+
+
+
+
+    return success;
+}//end buildMacenkoPipeline
+
+
+
+bool CreateStainVectorProfile::buildNMFPipeline(std::shared_ptr<StainProfile> theProfile, std::shared_ptr<std::string> errorMessage) {
+    bool success = true;
+    bool errorVal = false;
+    //This pipeline only works for two stains
+    //if there are the wrong number of stains, return error
+    errorMessage->assign("Wrong number of stains");
+
+
+
+
+    return success;
+}//end buildNMFPipeline
+
+
+
+
+
+
+
+
 
 std::string CreateStainVectorProfile::generateCompleteReport() const {
     //Combine the output of the stain profile report
@@ -600,9 +694,61 @@ std::string CreateStainVectorProfile::generateStainProfileReport(std::shared_ptr
               "B: " << std::setw(10) << std::setprecision(5) << rgb[2] <<
               std::endl;
     }
+    ss << std::endl;
+
+    //Analysis model and parameters
+    std::string analysisModel = theProfile->GetNameOfStainAnalysisModel();
+    auto analysisModelParameters = theProfile->GetAllAnalysisModelParameters();
+    if (!analysisModel.empty()) {
+        ss << "Stain analysis model: " << analysisModel << std::endl;
+    }
+    if (!analysisModelParameters.empty()) {
+        ss << generateParameterMapReport(analysisModelParameters)  << std::endl;
+    }
+
+    //Separation algorithm and parameters
+    std::string separationAlgorithm = theProfile->GetNameOfStainSeparationAlgorithm();
+    auto separationAlgorithmParameters = theProfile->GetAllSeparationAlgorithmParameters();
+    if (!separationAlgorithm.empty()) {
+        ss << "Stain separation algorithm: " << separationAlgorithm << std::endl;
+    }
+    if (!separationAlgorithmParameters.empty()) {
+        ss << generateParameterMapReport(separationAlgorithmParameters) << std::endl;
+    }
+
     //Complete, return the string
     return ss.str();
 }//end generateStainProfileReport
+
+pick up here!!!
+something is wrong with the GetAll...Parameters method. I got "parameter" instead of an actual value
+
+std::string CreateStainVectorProfile::generateParameterMapReport(std::map<std::string, std::string> p) const {
+    std::stringstream ss;
+    //Possible parameters are: pTypeNumPixels(), pTypeThreshold(), pTypePercentile(), pTypeHistoBins()
+    for (auto it = p.begin(); it != p.end(); ++it) {
+        std::string key = it->first;
+        std::string val = it->second;
+        if (!key.compare(StainProfile::pTypeNumPixels())) {
+            ss << "Number of pixels sampled: " << val << std::endl;
+        }
+        else if (!key.compare(StainProfile::pTypeThreshold())) {
+            ss << "Optical Density threshold : " << val << std::endl;
+        }
+        else if (!key.compare(StainProfile::pTypePercentile())) {
+            ss << "Histogram range percentile: " << val << std::endl;
+        }
+        else if (!key.compare(StainProfile::pTypeHistoBins())) {
+            ss << "Number of histogram bins: " << val << std::endl;
+        }
+        else {
+            //Unknown key, output anyway
+            ss << key << ": " << val << std::endl;
+        }
+    }
+    return ss.str();
+}//end generateParameterMapReport
+
 
 } // namespace algorithm
 } // namespace sedeen

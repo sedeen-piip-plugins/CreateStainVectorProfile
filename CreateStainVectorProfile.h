@@ -60,8 +60,9 @@ private:
     virtual void run();
     virtual void init(const image::ImageHandle& image);
 
-    ///Set the visibility of GUI elements at the end of init
-    void initialVisibility();
+    //Set the visibility of GUI elements at the end of init
+    //This doesn't work if called from init. It crashes Sedeen.
+    //void initialVisibility();
 
     ///Define the save file dialog options outside of init
     sedeen::file::FileDialogOptions defineSaveFileDialogOptions();
@@ -69,15 +70,24 @@ private:
 	/// Creates the Color Deconvolution pipeline with a cache
 	//
 	/// \return 
-	/// TRUE if successful, false on error or failure
-	bool buildPipeline(std::shared_ptr<StainProfile>);
+	/// TRUE if successful, false on error or failure. Error message is placed in pointer to string.
+	bool buildPipeline(std::shared_ptr<StainProfile>, std::shared_ptr<std::string>);
     /// Test whether the values or states of the UI parameters have changed
     bool checkParametersChanged(bool);
+    ///build the pipeline for getting the stain vectors from pixel values within ROIs. Error message is placed in pointer to string.
+    bool buildPixelROIPipeline(std::shared_ptr<StainProfile>, std::shared_ptr<std::string>);
+    ///build the pipeline for getting the stain vectors from the Macenko method. Error message is placed in pointer to string.
+    bool buildMacenkoPipeline(std::shared_ptr<StainProfile>, std::shared_ptr<std::string>);
+    ///build the pipeline for getting the stain vectors from non-negative matrix factorization. Error message is placed in pointer to string.
+    bool buildNMFPipeline(std::shared_ptr<StainProfile>, std::shared_ptr<std::string>);
+
 
 	///Create a text report that combines the output of the stain profile and any other reports
 	std::string generateCompleteReport() const;
 	///Create a text report summarizing the stain vector profile
 	std::string generateStainProfileReport(std::shared_ptr<StainProfile>) const;
+    ///Create a text report for the list of parameters from a model or algorithm
+    std::string generateParameterMapReport(std::map<std::string, std::string> p) const;
 
     ///Save the stain profile as defined in the parameters to the file in the save file dialog
     bool SaveStainProfileToFile();
