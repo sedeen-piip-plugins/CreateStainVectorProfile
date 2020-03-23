@@ -34,6 +34,7 @@
 #include <Windows.h>
 #include <fstream>
 #include <memory>
+#include <vector>
 
 // Plugin headers
 #include "ColorDeconvolutionKernel.h"

@@ -138,8 +138,6 @@ ADD_LIBRARY( ${PROJECT_NAME} MODULE
              ${STAIN_ANALYSIS_DIR}/ColorDeconvolutionKernel.cpp 
              ${STAIN_ANALYSIS_DIR}/StainVectorMath.h 
              ${STAIN_ANALYSIS_DIR}/StainVectorMath.cpp
-             ${STAIN_ANALYSIS_DIR}/StainRGBFromROI.h
-             ${STAIN_ANALYSIS_DIR}/StainRGBFromROI.cpp
              ${STAIN_ANALYSIS_DIR}/RandomWSISampler.h
              ${STAIN_ANALYSIS_DIR}/RandomWSISampler.cpp
              ${STAIN_ANALYSIS_DIR}/StainVectorBase.h 
