@@ -26,7 +26,7 @@
 //
 // Primary header
 #include "CreateStainVectorProfile.h"
-#include "StainRGBFromROI.h"
+#include "StainVectorPixelROI.h"
 
 #include <algorithm>
 #include <cassert>
@@ -325,12 +325,6 @@ void CreateStainVectorProfile::run() {
         //analysis model 0: "Ruifrok+Johnston Deconvolution"
         if (stainModelNumber == 0) {
             //No parameters
-
-            //Test setting a single value
-            theProfile->SetSingleAnalysisModelParameter(theProfile->pTypeNumPixels(), "9");
-
-            //Try some other tests
-
         }
         else {
             //No parameters
@@ -503,9 +497,8 @@ bool CreateStainVectorProfile::buildPipeline(std::shared_ptr<StainProfile> thePr
     }
     buildSuccessful = subPipelineSuccessful;
 
-
     //Send information to the kernel
-    //TEMPORARY! Note that the threshold value must be divided by 100 here,
+    //TEMPORARY! Note that the display threshold value must be divided by 100 here,
     //because it is not possible to set the precision of a double parameter as of Sedeen 5.4.1
     auto colorDeconvolution_kernel =
         std::make_shared<image::tile::ColorDeconvolution>(DisplayOption, theProfile,
@@ -521,7 +514,6 @@ bool CreateStainVectorProfile::buildPipeline(std::shared_ptr<StainProfile> thePr
 
     return buildSuccessful;
 }//end buildPipeline
-
 
 
 bool CreateStainVectorProfile::buildPixelROIPipeline(std::shared_ptr<StainProfile> theProfile, std::shared_ptr<std::string> errorMessage) {
@@ -578,12 +570,16 @@ bool CreateStainVectorProfile::buildPixelROIPipeline(std::shared_ptr<StainProfil
             return false;
         }
     }
-    //Pass the regions of interest to the getStainsComponents function
-    double conv_matrix[9] = { 0.0 };
-    auto display_resolution = getDisplayResolution(image(), m_displayArea);
+    //auto display_resolution = getDisplayResolution(image(), m_displayArea);
 
-    sedeen::image::getStainsComponents(source_factory,
-        regionsOfInterestVector, display_resolution, conv_matrix);
+    //Pass the regions of interest to a StainVectorPixelROI object, call ComputeStainVectors
+    double conv_matrix[9] = { 0.0 };
+
+    //pick up here!!! I like the idea of returning an error bool and a message
+
+    std::shared_ptr<sedeen::image::StainVectorPixelROI> stainVectorFromROI 
+        = std::make_shared<sedeen::image::StainVectorPixelROI>(source_factory, regionsOfInterestVector);
+    stainVectorFromROI->ComputeStainVectors(conv_matrix);
     //option of error return from here?
     //errorMessage->assign("Could not calculate the stain vectors. Please check your regions of interest and try again.");
 
@@ -720,9 +716,6 @@ std::string CreateStainVectorProfile::generateStainProfileReport(std::shared_ptr
     return ss.str();
 }//end generateStainProfileReport
 
-pick up here!!!
-something is wrong with the GetAll...Parameters method. I got "parameter" instead of an actual value
-
 std::string CreateStainVectorProfile::generateParameterMapReport(std::map<std::string, std::string> p) const {
     std::stringstream ss;
     //Possible parameters are: pTypeNumPixels(), pTypeThreshold(), pTypePercentile(), pTypeHistoBins()
@@ -748,7 +741,6 @@ std::string CreateStainVectorProfile::generateParameterMapReport(std::map<std::s
     }
     return ss.str();
 }//end generateParameterMapReport
-
 
 } // namespace algorithm
 } // namespace sedeen
