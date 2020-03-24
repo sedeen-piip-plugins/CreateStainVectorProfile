@@ -27,6 +27,8 @@
 // Primary header
 #include "CreateStainVectorProfile.h"
 #include "StainVectorPixelROI.h"
+#include "StainVectorMacenko.h"
+#include "StainVectorNMF.h"
 
 #include <algorithm>
 #include <cassert>
@@ -515,7 +517,6 @@ bool CreateStainVectorProfile::buildPipeline(std::shared_ptr<StainProfile> thePr
     return buildSuccessful;
 }//end buildPipeline
 
-
 bool CreateStainVectorProfile::buildPixelROIPipeline(std::shared_ptr<StainProfile> theProfile, std::shared_ptr<std::string> errorMessage) {
     bool success = true;
     bool errorVal = false;
@@ -533,7 +534,7 @@ bool CreateStainVectorProfile::buildPixelROIPipeline(std::shared_ptr<StainProfil
     std::vector<std::shared_ptr<GraphicItemBase>> regionsOfInterestVector;
     if ((numStains <= 0) || (numStains > 3)) {
         errorMessage->assign("Invalid number of stains chosen");
-        return false;
+        return errorVal;
     }
     else if (numStains > 0) {
         if (oneDefined) {
@@ -543,7 +544,7 @@ bool CreateStainVectorProfile::buildPixelROIPipeline(std::shared_ptr<StainProfil
         }
         else {
             errorMessage->assign("Stain 1 region of interest is not defined. Please define a region to use to calculate the stain vector.");
-            return false;
+            return errorVal;
         }
     }
     //These if statements are cumulative, not "else if"
@@ -555,7 +556,7 @@ bool CreateStainVectorProfile::buildPixelROIPipeline(std::shared_ptr<StainProfil
         }
         else {
             errorMessage->assign("Stain 2 region of interest is not defined. Please define a region to use to calculate the stain vector.");
-            return false;
+            return errorVal;
         }
     }
     //Cumulative
@@ -567,7 +568,7 @@ bool CreateStainVectorProfile::buildPixelROIPipeline(std::shared_ptr<StainProfil
         }
         else {
             errorMessage->assign("Stain 3 region of interest is not defined. Please define a region to use to calculate the stain vector.");
-            return false;
+            return errorVal;
         }
     }
     //auto display_resolution = getDisplayResolution(image(), m_displayArea);
@@ -575,65 +576,101 @@ bool CreateStainVectorProfile::buildPixelROIPipeline(std::shared_ptr<StainProfil
     //Pass the regions of interest to a StainVectorPixelROI object, call ComputeStainVectors
     double conv_matrix[9] = { 0.0 };
 
-    //pick up here!!! I like the idea of returning an error bool and a message
-
     std::shared_ptr<sedeen::image::StainVectorPixelROI> stainVectorFromROI 
         = std::make_shared<sedeen::image::StainVectorPixelROI>(source_factory, regionsOfInterestVector);
     stainVectorFromROI->ComputeStainVectors(conv_matrix);
     //option of error return from here?
     //errorMessage->assign("Could not calculate the stain vectors. Please check your regions of interest and try again.");
 
-    //Assign the output of getStainsComponents to the StainProfile 
+    //Assign the output to the StainProfile 
     bool assignCheck = theProfile->SetProfilesFromDoubleArray(conv_matrix);
 
     if (!assignCheck) {
         errorMessage->assign("Could not assign the computed stain vectors to the stain profile.");
-        return false;
+        return errorVal;
     }
     //else
     errorMessage->assign("Stain vector computation successful.");
-    return true;
+    return success;
 }//end buildPixelROIPipeline
-
-
 
 bool CreateStainVectorProfile::buildMacenkoPipeline(std::shared_ptr<StainProfile> theProfile, std::shared_ptr<std::string> errorMessage) {
     bool success = true;
     bool errorVal = false;
+
+    // Get source image properties
+    auto source_factory = image()->getFactory();
+    
+    //Get configuration information from the profile
+    int numStains = theProfile->GetNumberOfStainComponents();
+    long int numPixels = theProfile->GetSeparationAlgorithmNumPixelsParameter();
+    double compThreshold = theProfile->GetSeparationAlgorithmThresholdParameter();
+    double percentileThreshold = theProfile->GetSeparationAlgorithmPercentileParameter();
+    int numHistoBins = theProfile->GetSeparationAlgorithmHistogramBinsParameter();
+
+    double conv_matrix[9] = { 0.0 };
+
     //This pipeline only works for two stains
-    //if there are the wrong number of stains, return error
-    errorMessage->assign("Wrong number of stains");
+    if (numStains == 2) {
+        //Pass the regions of interest to a StainVectorMacenko object, call ComputeStainVectors
+        std::shared_ptr<sedeen::image::StainVectorMacenko> stainVectorFromMacenko
+            = std::make_shared<sedeen::image::StainVectorMacenko>(source_factory, compThreshold, percentileThreshold, numHistoBins);
+        stainVectorFromMacenko->ComputeStainVectors(conv_matrix, numPixels);
+    }
+    else {
+        errorMessage->assign("Invalid number of stains chosen. The Macenko method is intended for two stains.");
+        return errorVal;
+    }
 
+    //Assign the output to the StainProfile 
+    bool assignCheck = theProfile->SetProfilesFromDoubleArray(conv_matrix);
 
-
-
-
-
+    if (!assignCheck) {
+        errorMessage->assign("Could not assign the computed stain vectors to the stain profile.");
+        return errorVal;
+    }
+    //else
+    errorMessage->assign("Stain vector computation successful.");
     return success;
 }//end buildMacenkoPipeline
-
-
 
 bool CreateStainVectorProfile::buildNMFPipeline(std::shared_ptr<StainProfile> theProfile, std::shared_ptr<std::string> errorMessage) {
     bool success = true;
     bool errorVal = false;
+
+    // Get source image properties
+    auto source_factory = image()->getFactory();
+
+    //Get configuration information from the profile
+    int numStains = theProfile->GetNumberOfStainComponents();
+    long int numPixels = theProfile->GetSeparationAlgorithmNumPixelsParameter();
+    double compThreshold = theProfile->GetSeparationAlgorithmThresholdParameter();
+
+    double conv_matrix[9] = { 0.0 };
+
     //This pipeline only works for two stains
-    //if there are the wrong number of stains, return error
-    errorMessage->assign("Wrong number of stains");
+    if (numStains == 2) {
+        //Pass the regions of interest to a StainVectorNMF object, call ComputeStainVectors
+        std::shared_ptr<sedeen::image::StainVectorNMF> stainVectorFromNMF
+            = std::make_shared<sedeen::image::StainVectorNMF>(source_factory, compThreshold);
+        stainVectorFromNMF->ComputeStainVectors(conv_matrix, numPixels);
+    }
+    else {
+        errorMessage->assign("Invalid number of stains. Separation by Non-Negative Matrix Factorization is intended for two stains.");
+        return errorVal;
+    }
 
+    //Assign the output to the StainProfile 
+    bool assignCheck = theProfile->SetProfilesFromDoubleArray(conv_matrix);
 
-
-
+    if (!assignCheck) {
+        errorMessage->assign("Could not assign the computed stain vectors to the stain profile.");
+        return errorVal;
+    }
+    //else
+    errorMessage->assign("Stain vector computation successful.");
     return success;
 }//end buildNMFPipeline
-
-
-
-
-
-
-
-
 
 std::string CreateStainVectorProfile::generateCompleteReport() const {
     //Combine the output of the stain profile report
