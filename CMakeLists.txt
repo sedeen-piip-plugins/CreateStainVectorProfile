@@ -138,26 +138,16 @@ ADD_LIBRARY( ${PROJECT_NAME} MODULE
              ${STAIN_ANALYSIS_DIR}/ColorDeconvolutionKernel.cpp 
              ${STAIN_ANALYSIS_DIR}/StainVectorMath.h 
              ${STAIN_ANALYSIS_DIR}/StainVectorMath.cpp
-             ${STAIN_ANALYSIS_DIR}/RandomWSISampler.h
-             ${STAIN_ANALYSIS_DIR}/RandomWSISampler.cpp
-             ${STAIN_ANALYSIS_DIR}/StainVectorBase.h 
-             ${STAIN_ANALYSIS_DIR}/StainVectorBase.cpp
-             ${STAIN_ANALYSIS_DIR}/StainVectorOpenCV.h 
-             ${STAIN_ANALYSIS_DIR}/StainVectorOpenCV.cpp
-             ${STAIN_ANALYSIS_DIR}/StainVectorMLPACK.h 
-             ${STAIN_ANALYSIS_DIR}/StainVectorMLPACK.cpp
-             ${STAIN_ANALYSIS_DIR}/StainVectorPixelROI.h 
-             ${STAIN_ANALYSIS_DIR}/StainVectorPixelROI.cpp
-             ${STAIN_ANALYSIS_DIR}/StainVectorMacenko.h 
-             ${STAIN_ANALYSIS_DIR}/StainVectorMacenko.cpp
-             ${STAIN_ANALYSIS_DIR}/StainVectorNMF.h 
-             ${STAIN_ANALYSIS_DIR}/StainVectorNMF.cpp 
-             ${STAIN_ANALYSIS_DIR}/BasisTransform.h 
-             ${STAIN_ANALYSIS_DIR}/BasisTransform.cpp
-             ${STAIN_ANALYSIS_DIR}/AngleHistogram.h 
-             ${STAIN_ANALYSIS_DIR}/AngleHistogram.cpp
-             ${STAIN_ANALYSIS_DIR}/MacenkoHistogram.h 
-             ${STAIN_ANALYSIS_DIR}/MacenkoHistogram.cpp
+             RandomWSISampler.h RandomWSISampler.cpp
+             StainVectorBase.h StainVectorBase.cpp
+             StainVectorOpenCV.h StainVectorOpenCV.cpp
+             StainVectorMLPACK.h StainVectorMLPACK.cpp
+             StainVectorPixelROI.h StainVectorPixelROI.cpp
+             StainVectorMacenko.h StainVectorMacenko.cpp 
+             StainVectorNMF.h StainVectorNMF.cpp 
+             BasisTransform.h BasisTransform.cpp
+             AngleHistogram.h AngleHistogram.cpp
+             MacenkoHistogram.h MacenkoHistogram.cpp
              )
 
 # Link the library against the Sedeen SDK libraries
