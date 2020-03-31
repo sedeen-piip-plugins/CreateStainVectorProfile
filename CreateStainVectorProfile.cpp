@@ -101,12 +101,20 @@ CreateStainVectorProfile::CreateStainVectorProfile()
     m_stainToDisplayOptions.push_back("Stain 2");
     m_stainToDisplayOptions.push_back("Stain 3");
 
-    //Populate the analysis model and separation algorithm lists with a temporary StainProfile
+    //Populate the analysis model and separation algorithm lists from a temporary StainProfile
     auto tempStainProfile = std::make_shared<StainProfile>();
     //The stain analysis model options
     m_stainAnalysisModelOptions = tempStainProfile->GetStainAnalysisModelOptions();
-    //The stain separation algorithm options
-    m_separationAlgorithmOptions = tempStainProfile->GetStainSeparationAlgorithmOptions();
+    //The stain separation algorithm options: remove the last one, "Pre-Defined"
+    auto allSeparationAlgorithmOptions = tempStainProfile->GetStainSeparationAlgorithmOptions();
+    if (!allSeparationAlgorithmOptions.empty()) {
+        allSeparationAlgorithmOptions.pop_back();
+        m_separationAlgorithmOptions = allSeparationAlgorithmOptions;
+    }
+    else {
+        //It's empty, but for lack of other actions to take, directly assign to the member vector
+        m_separationAlgorithmOptions = tempStainProfile->GetStainSeparationAlgorithmOptions();
+    }
     //Clean up
     tempStainProfile.reset();
 
@@ -703,9 +711,9 @@ std::string CreateStainVectorProfile::generateStainProfileReport(std::shared_ptr
         ss << std::left;
         ss << "Stain 1: " << theProfile->GetNameOfStainOne() << std::endl;
         ss << "R: " << std::setw(10) << std::setprecision(5) << rgb[0] <<
-              "G: " << std::setw(10) << std::setprecision(5) << rgb[1] <<
-              "B: " << std::setw(10) << std::setprecision(5) << rgb[2] <<
-              std::endl;
+            "G: " << std::setw(10) << std::setprecision(5) << rgb[1] <<
+            "B: " << std::setw(10) << std::setprecision(5) << rgb[2] <<
+            std::endl;
     }
     //Stain two
     if (numStains >= 2) {
@@ -713,9 +721,9 @@ std::string CreateStainVectorProfile::generateStainProfileReport(std::shared_ptr
         ss << std::left;
         ss << "Stain 2: " << theProfile->GetNameOfStainTwo() << std::endl;
         ss << "R: " << std::setw(10) << std::setprecision(5) << rgb[0] <<
-              "G: " << std::setw(10) << std::setprecision(5) << rgb[1] <<
-              "B: " << std::setw(10) << std::setprecision(5) << rgb[2] <<
-              std::endl;
+            "G: " << std::setw(10) << std::setprecision(5) << rgb[1] <<
+            "B: " << std::setw(10) << std::setprecision(5) << rgb[2] <<
+            std::endl;
     }
     //Stain three
     if (numStains == 3) {
@@ -723,9 +731,9 @@ std::string CreateStainVectorProfile::generateStainProfileReport(std::shared_ptr
         ss << std::left;
         ss << "Stain 3: " << theProfile->GetNameOfStainThree() << std::endl;
         ss << "R: " << std::setw(10) << std::setprecision(5) << rgb[0] <<
-              "G: " << std::setw(10) << std::setprecision(5) << rgb[1] <<
-              "B: " << std::setw(10) << std::setprecision(5) << rgb[2] <<
-              std::endl;
+            "G: " << std::setw(10) << std::setprecision(5) << rgb[1] <<
+            "B: " << std::setw(10) << std::setprecision(5) << rgb[2] <<
+            std::endl;
     }
     ss << std::endl;
 
@@ -736,7 +744,7 @@ std::string CreateStainVectorProfile::generateStainProfileReport(std::shared_ptr
         ss << "Stain analysis model: " << analysisModel << std::endl;
     }
     if (!analysisModelParameters.empty()) {
-        ss << generateParameterMapReport(analysisModelParameters)  << std::endl;
+        ss << generateParameterMapReport(analysisModelParameters) << std::endl;
     }
 
     //Separation algorithm and parameters
@@ -763,7 +771,7 @@ std::string CreateStainVectorProfile::generateParameterMapReport(std::map<std::s
             ss << "Number of pixels sampled: " << val << std::endl;
         }
         else if (!key.compare(StainProfile::pTypeThreshold())) {
-            ss << "Optical Density threshold : " << val << std::endl;
+            ss << "Optical Density threshold applied when computing stain vectors: " << val << std::endl;
         }
         else if (!key.compare(StainProfile::pTypePercentile())) {
             ss << "Histogram range percentile: " << val << std::endl;
