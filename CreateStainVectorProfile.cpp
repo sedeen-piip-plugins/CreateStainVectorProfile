@@ -383,8 +383,8 @@ void CreateStainVectorProfile::run() {
             m_outputText.sendText(report); 
         }
 
-        //If an output file should be written, save the localStainProfile to it
-        if (m_showPreviewOnly == false) {
+        //If an output file should be written and the algorithm ran successfully, save the localStainProfile to file
+        if ((m_showPreviewOnly == false) && (buildSuccessful == true)) {
             //Send the contents of the localStainProfile to the given file
             bool saveResult = SaveStainProfileToFile();
 
@@ -405,35 +405,6 @@ void CreateStainVectorProfile::run() {
         m_colorDeconvolution_factory.reset();
     }
 }//end run
-
-///Define the save file dialog options outside of init
-sedeen::file::FileDialogOptions CreateStainVectorProfile::defineSaveFileDialogOptions() {
-    sedeen::file::FileDialogOptions theOptions;
-    theOptions.caption = "Save stain vector profile as...";
-    //theOptions.flags = sedeen::file::FileDialogFlags:: None currently needed
-    //theOptions.startDir; //no current preference
-    //Define the file type dialog filter
-    sedeen::file::FileDialogFilter theDialogFilter;
-    theDialogFilter.name = "Stain Vector Profile (*.xml)";
-    theDialogFilter.extensions.push_back("xml");
-    theOptions.filters.push_back(theDialogFilter);
-    return theOptions;
-}//end defineSaveFileDialogOptions
-
-bool CreateStainVectorProfile::SaveStainProfileToFile() {
-    //Get the full path file name from the file dialog parameter
-    sedeen::algorithm::parameter::SaveFileDialog::DataType fileDialogDataType = this->m_saveFileAs;
-    std::string theFile = fileDialogDataType.getFilename();
-    //Does it exist or can it be created, and can it be written to?
-    if (StainProfile::checkFile(theFile, "w")) {
-        m_localStainProfile->writeStainProfile(theFile);
-        return true;
-    }
-    else {
-        return false;
-    }
-    return false;
-}//end SaveStainProfileToFile
 
 bool CreateStainVectorProfile::checkParametersChanged(bool somethingChanged) {
     //Check if any of the parameters changed, plus an external value to check
@@ -786,6 +757,35 @@ std::string CreateStainVectorProfile::generateParameterMapReport(std::map<std::s
     }
     return ss.str();
 }//end generateParameterMapReport
+
+///Define the save file dialog options outside of init
+sedeen::file::FileDialogOptions CreateStainVectorProfile::defineSaveFileDialogOptions() {
+    sedeen::file::FileDialogOptions theOptions;
+    theOptions.caption = "Save stain vector profile as...";
+    //theOptions.flags = sedeen::file::FileDialogFlags:: None currently needed
+    //theOptions.startDir; //no current preference
+    //Define the file type dialog filter
+    sedeen::file::FileDialogFilter theDialogFilter;
+    theDialogFilter.name = "Stain Vector Profile (*.xml)";
+    theDialogFilter.extensions.push_back("xml");
+    theOptions.filters.push_back(theDialogFilter);
+    return theOptions;
+}//end defineSaveFileDialogOptions
+
+bool CreateStainVectorProfile::SaveStainProfileToFile() {
+    //Get the full path file name from the file dialog parameter
+    sedeen::algorithm::parameter::SaveFileDialog::DataType fileDialogDataType = this->m_saveFileAs;
+    std::string theFile = fileDialogDataType.getFilename();
+    //Does it exist or can it be created, and can it be written to?
+    if (StainProfile::checkFile(theFile, "w")) {
+        m_localStainProfile->writeStainProfile(theFile);
+        return true;
+    }
+    else {
+        return false;
+    }
+    return false;
+}//end SaveStainProfileToFile
 
 } // namespace algorithm
 } // namespace sedeen

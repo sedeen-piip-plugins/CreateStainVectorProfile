@@ -22,24 +22,11 @@
  *
  *=============================================================================*/
 
-
-//I'm moving this, but keeping the code snippets for later use
-    //Start the steady clock
-    //auto startTime = std::chrono::steady_clock::now();
-
-    //How long did it take to get the basis vectors?
-    //auto afterBasisVectorsTime = std::chrono::steady_clock::now();
-
-    //How long did getting the basis vectors take?
-    //long long gettingBasisVectorsDuration = std::chrono::duration_cast<std::chrono::microseconds>(afterBasisVectorsTime - startTime).count();
-
-
-
 #include "StainVectorMacenko.h"
 
 //#include <chrono>
 //#include <random>
-#include <fstream>
+//#include <fstream>
 #include <sstream>
 
 #include "ODConversion.h"
@@ -77,86 +64,33 @@ void StainVectorMacenko::ComputeStainVectors(double (&outputVectors)[9]) {
     auto theSampler = this->GetRandomWSISampler();
     if (theSampler == nullptr) { return; }
     
-    //TODO change to long int!
     bool samplingSuccess = theSampler->ChooseRandomPixels(samplePixels, sampleSize, ODthreshold);
     if (!samplingSuccess) { return; }
 
-    //Temp file output
-    std::fstream tempOut;
-    tempOut.open("D:\\mschumaker\\projects\\Sedeen\\testData\\output\\tempout-ComputeStainVectors.txt", std::fstream::out);
-
-
-    //Create a class to perform the basis transformation of the sample pixels
-    std::unique_ptr<BasisTransform> theBasisTransform = std::make_unique<BasisTransform>();
-    //Both the input and output data points should be the matrix rows (columns are pixel elements)
+    //Create a class to perform the basis transformation of the sample pixels.
+    std::unique_ptr<BasisTransform> theBasisTransform = std::make_unique<BasisTransform>(samplePixels, true); //optimizeDirections=true
+    //The basis vectors are computed in the constructor and stored as members, so project points using them
     cv::Mat projectedPoints;
-    theBasisTransform->PCAPointTransform(samplePixels, projectedPoints);
-
-    //Now, the only reason to see the basis vectors in this class is out of curiosity
-    //cv::Mat basisVectors;
-    //bool getBasisSuccess = theBasisTransform->GetBasisVectors(basisVectors);
-
-    std::stringstream scov;
-    //scov << "The basis vectors are: " << basisVectors << std::endl;
-    //scov << "the projectedPoints are: " << std::endl;
-    //scov << projectedPoints << std::endl;
-
-
-
+    bool projectSuccess = theBasisTransform->projectPoints(samplePixels, projectedPoints, false); //useMean=false
+    if (!projectSuccess) { return; }
 
     //Create a class to histogram the results and find 2D vectors corresponding to percentile thresholds
     std::unique_ptr<MacenkoHistogram> theHistogram
         = std::make_unique<MacenkoHistogram>(this->GetPercentileThreshold(), this->GetNumHistogramBins());
     cv::Mat percentileThreshVectors;
-    theHistogram->PercentileThresholdVectors(projectedPoints, percentileThreshVectors);
-
-    scov << "The percentile threshold vectors: " << std::endl;
-    scov << percentileThreshVectors << std::endl;
-
+    bool histoSuccess = theHistogram->PercentileThresholdVectors(projectedPoints, percentileThreshVectors);
+    if (!histoSuccess) { return; }
 
     //Back-project to get un-normalized stain vectors. DO NOT translate to the mean after backprojection.
     cv::Mat backProjectedVectors;
-    theBasisTransform->backProjectPoints(percentileThreshVectors, backProjectedVectors, false); //useMean=false
-
-    scov << "The back projected percentileThreshVectors: " << std::endl;
-    scov << backProjectedVectors << std::endl;
-
+    bool backProjectSuccess = theBasisTransform->backProjectPoints(percentileThreshVectors, backProjectedVectors, false); //useMean=false
+    if (!backProjectSuccess) { return; }
 
     //Convert to C array and normalize rows
     double tempStainVecOutput[9] = {0.0};
     StainCVMatToCArray(backProjectedVectors, tempStainVecOutput, true);
     std::copy(std::begin(tempStainVecOutput), std::end(tempStainVecOutput), std::begin(outputVectors));
-
-
-
-
-    scov << "Testing CVMat to C array conversion (normalize=true): " << std::endl;
-    for (int i = 0; i < 9; i++) {
-        scov << tempStainVecOutput[i] << ", ";
-    }
-    scov << std::endl;
-    
-
-
-
-    //Test converting it the other way
-    //cv::Mat convertBack;
-    //StainCArrayToCVMat(tempStainVecOutput, convertBack, true);
-
-    //scov << "Testing C array to CVMat conversion (normalize=true): " << std::endl;
-    //scov << convertBack << std::endl;
-
-
-    tempOut << scov.str() << std::endl;
-    tempOut.close();
-
-
-
-
-
 }//end single-parameter ComputeStainVectors
-
-
 
 //This overload does not have a default value for sampleSize, so it requires at two arguments
 void StainVectorMacenko::ComputeStainVectors(double (&outputVectors)[9], const long int sampleSize) {

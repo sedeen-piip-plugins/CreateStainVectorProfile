@@ -32,7 +32,7 @@
 
 #include <omp.h>
 #include <Windows.h>
-#include <fstream>
+//#include <fstream>
 #include <memory>
 #include <vector>
 
@@ -64,9 +64,6 @@ private:
     //Set the visibility of GUI elements at the end of init
     //This doesn't work if called from init. It crashes Sedeen.
     //void initialVisibility();
-
-    ///Define the save file dialog options outside of init
-    sedeen::file::FileDialogOptions defineSaveFileDialogOptions();
     
 	/// Creates the Color Deconvolution pipeline with a cache
 	//
@@ -89,6 +86,9 @@ private:
 	std::string generateStainProfileReport(std::shared_ptr<StainProfile>) const;
     ///Create a text report for the list of parameters from a model or algorithm
     std::string generateParameterMapReport(std::map<std::string, std::string> p) const;
+
+    ///Define the save file dialog options outside of init
+    sedeen::file::FileDialogOptions defineSaveFileDialogOptions();
 
     ///Save the stain profile as defined in the parameters to the file in the save file dialog
     bool SaveStainProfileToFile();
