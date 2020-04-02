@@ -33,8 +33,6 @@
 namespace sedeen {
 namespace image {
 
-
-
 class BasisTransform {
 public:
     ///An enum to identify which axis input vectors are arranged in (outputs will match, if applicable)
@@ -45,27 +43,18 @@ public:
     };
 
 public:
-    BasisTransform();
+    BasisTransform(cv::InputArray sourcePoints, const bool &optimizeDirections = true, 
+        const bool &useMean = false, const VectorDirection &sourcePointDir = VectorDirection::ROWVECTORS);
     virtual ~BasisTransform();
 
-    void ProjectionOnly(cv::InputArray sourcePoints, cv::OutputArray outputPoints, cv::InputArray basisVectors,
-        const VectorDirection &sourcePointDir = VectorDirection::ROWVECTORS);
-
-
-
-    ///Perform Principal Component Analysis (PCA) on a set of points, find a basis, transform points to new basis.
-    void PCAPointTransform(cv::InputArray sourcePoints, cv::OutputArray outputPoints, 
-        cv::InputArray sourceMask = cv::noArray(), cv::InputArray inputMean = cv::noArray(),
-        const VectorDirection &sourcePointDir = VectorDirection::ROWVECTORS);
-
     ///Use the member variable basis vectors to create a set of points projected into a new basis. Set subtractMean to translate before projection.
-    bool projectPoints(cv::InputArray sourcePoints, cv::OutputArray projectedPoints, bool subtractMean = true) const;
+    bool projectPoints(cv::InputArray sourcePoints, cv::OutputArray projectedPoints, const bool &subtractMean = true) const;
 
     ///Given a 2D projected point set, backproject to the original basis using the stored basis vectors. Set addMean to translate after back-projection.
-    bool backProjectPoints(cv::InputArray projectedPoints, cv::OutputArray backProjPoints, bool addMean = true) const;
+    bool backProjectPoints(cv::InputArray projectedPoints, cv::OutputArray backProjPoints, const bool &addMean = true) const;
 
     ///Set/Get the numTestingPixels member variable
-    inline void SetNumTestingPixels(const int n) { m_numTestingPixels = n; }
+    inline void SetNumTestingPixels(const int &n) { m_numTestingPixels = n; }
     ///Set/Get the numTestingPixels member variable
     inline const int GetNumTestingPixels() const { return m_numTestingPixels; }
 
@@ -79,37 +68,34 @@ public:
     ///Get the member point mean
     cv::Mat GetPointMean() const;
     ///Get some or all of the member eigenvalues (nVals = -1 to return all)
-    void GetEigenvalues(cv::OutputArray evals, const int nVals = -1) const;
+    void GetEigenvalues(cv::OutputArray evals, const int &nVals = -1) const;
     ///Get some or all of the member eigenvalues (nVals = -1 to return all)
-    cv::Mat GetEigenvalues(const int nVals = -1) const;
+    cv::Mat GetEigenvalues(const int &nVals = -1) const;
     ///Get the direction the eigenvectors are oriented in from the eigenvalues
     const VectorDirection GetEigenvectorElementsDirection() const;
     ///Get some or all of the member eigenvectors (nVecs = -1 to return all)
-    void GetEigenvectors(cv::OutputArray evecs, const int nVecs = -1, 
+    void GetEigenvectors(cv::OutputArray evecs, const int &nVecs = -1, 
         const VectorDirection &evecDir = VectorDirection::ROWVECTORS) const;
     ///Get some or all of the member eigenvectors (nVecs = -1 to return all)
-    cv::Mat GetEigenvectors(const int nVecs = -1, 
+    cv::Mat GetEigenvectors(const int &nVecs = -1, 
         const VectorDirection &evecDir = VectorDirection::ROWVECTORS) const;
 
-
-
-
-    ///Which signs should be used for the basis vectors? Test projecting some source points, try to get ++ quadrant projections
-    void OptimizeBasisVectorSigns(cv::InputArray sourcePixels,
-        cv::InputArray inputVectors, cv::OutputArray outputVectors, bool useMean = true,
-        const VectorDirection &basisVecDir = VectorDirection::COLUMNVECTORS);
-
-
-
 protected:
+    ///Find the eigenvectors and basis vectors from a set of source points, with option to optimize the vector directions/signs.
+    void computeBasisVectors(cv::InputArray sourcePoints, cv::OutputArray basisVectors, const bool &optimizeDirections = true,
+        const bool &useMean = false, const VectorDirection &sourcePointDir = VectorDirection::ROWVECTORS);
     ///Given points and a set of basis vectors, create a set of points projected into the new basis. Set subtractMean to translate before projection.
     void projectPoints(cv::InputArray sourcePoints, cv::OutputArray projectedPoints, 
-        cv::InputArray basisVectors, cv::InputArray means, bool subtractMean = true) const;
+        cv::InputArray basisVectors, cv::InputArray means, const bool &subtractMean = false) const;
     ///Given a 2D projected point set and a basis vectors, backproject to the original basis. Set addMean to translate after back-projection.
     void backProjectPoints(cv::InputArray projectedPoints, cv::OutputArray backProjPoints, 
-        cv::InputArray basisVectors, cv::InputArray means, bool addMean = true) const;
+        cv::InputArray basisVectors, cv::InputArray means, const bool &addMean = false) const;
+    ///Which signs should be used for the basis vectors? Test projecting some source points, try to get ++ quadrant projections.
+    void optimizeBasisVectorSigns(cv::InputArray sourcePixels,
+        cv::InputArray inputVectors, cv::OutputArray outputVectors, const bool &useMean = false,
+        const VectorDirection &basisVecDir = VectorDirection::COLUMNVECTORS);
     ///Randomly choose numberOfPixels rows from sourcePixels, copy them to the subsample OutputArray.
-    void CreatePixelSubsample(cv::InputArray sourcePixels, cv::OutputArray subsample, const long int numberOfPixels);
+    void CreatePixelSubsample(cv::InputArray sourcePixels, cv::OutputArray subsample, const long int &numberOfPixels);
     ///Set the member basis vectors. Second parameter is direction of input vectors. Store basis vectors as row vectors.
     void SetBasisVectors(cv::InputArray basisVectors, const VectorDirection &vecDir = VectorDirection::ROWVECTORS);
     ///Set the member point mean
@@ -132,7 +118,7 @@ private:
 
     ///Basis vectors
     cv::Mat m_basisVectors;
-    ///The mean position to centre the data on
+    ///The mean position of the point cloud
     cv::Mat m_pointMean;
     ///All eigenvalues of the covariance matrix, in descending order
     cv::Mat m_eigenvalues;
