@@ -497,8 +497,8 @@ bool CreateStainVectorProfile::buildPipeline(std::shared_ptr<StainProfile> thePr
 }//end buildPipeline
 
 bool CreateStainVectorProfile::buildPixelROIPipeline(std::shared_ptr<StainProfile> theProfile, std::shared_ptr<std::string> errorMessage) {
-    bool success = true;
-    bool errorVal = false;
+    const bool success = true;
+    const bool errorVal = false;
 
     // Get source image properties
     auto source_factory = image()->getFactory();
@@ -574,8 +574,8 @@ bool CreateStainVectorProfile::buildPixelROIPipeline(std::shared_ptr<StainProfil
 }//end buildPixelROIPipeline
 
 bool CreateStainVectorProfile::buildMacenkoPipeline(std::shared_ptr<StainProfile> theProfile, std::shared_ptr<std::string> errorMessage) {
-    bool success = true;
-    bool errorVal = false;
+    const bool success = true;
+    const bool errorVal = false;
 
     // Get source image properties
     auto source_factory = image()->getFactory();
@@ -614,8 +614,8 @@ bool CreateStainVectorProfile::buildMacenkoPipeline(std::shared_ptr<StainProfile
 }//end buildMacenkoPipeline
 
 bool CreateStainVectorProfile::buildNMFPipeline(std::shared_ptr<StainProfile> theProfile, std::shared_ptr<std::string> errorMessage) {
-    bool success = true;
-    bool errorVal = false;
+    const bool success = true;
+    const bool errorVal = false;
 
     // Get source image properties
     auto source_factory = image()->getFactory();
