@@ -25,7 +25,6 @@
 #include "MacenkoHistogram.h"
 
 #include <cmath>
-//#include <fstream>
 #include <sstream>
 
 namespace sedeen {
@@ -73,7 +72,7 @@ bool MacenkoHistogram::PercentileThresholdVectors(cv::InputArray projectedPoints
 const std::array<float, 2> MacenkoHistogram::FindPercentileThresholdValues(cv::InputArray _theHist) {
     //Return percentile threshold values in the histogram as a 2-element array
     //The intent is to make the output format more strict than cv::Mat would be
-    std::array<float, 2> errorValues = { 0.0,0.0 };
+    const std::array<float, 2> errorValues = { 0.0,0.0 };
     std::array<float, 2> outputValues = { 0.0,0.0 };
     if (_theHist.empty()) { return errorValues; }
     //Get the histogram as a float matrix
