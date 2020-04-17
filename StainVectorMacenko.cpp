@@ -83,7 +83,7 @@ void StainVectorMacenko::ComputeStainVectors(double (&outputVectors)[9]) {
     bool backProjectSuccess = theBasisTransform->backProjectPoints(percentileThreshVectors, backProjectedVectors, false); //useMean=false
     if (!backProjectSuccess) { return; }
 
-    //Convert to C array and normalize rows
+    //Convert to C-style array and normalize rows
     double tempStainVecOutput[9] = {0.0};
     StainCVMatToCArray(backProjectedVectors, tempStainVecOutput, true);
     std::copy(std::begin(tempStainVecOutput), std::end(tempStainVecOutput), std::begin(outputVectors));

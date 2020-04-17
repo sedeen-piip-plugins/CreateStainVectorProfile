@@ -74,7 +74,7 @@ void StainVectorNMF::ComputeStainVectors(double (&outputVectors)[9]) {
 
     //The stain values are in the encoding matrix. Convert to output array
     cv::Mat encodingAsCV = ArmaMatToCVMat<double>(encodingMat);
-    //Convert to C array and normalize rows
+    //Convert to C-style array and normalize rows
     double tempStainVecOutput[9] = {0.0};
     StainCVMatToCArray(encodingAsCV, tempStainVecOutput, true);
     for (int i = 0; i < 9; i++) {
