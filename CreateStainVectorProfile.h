@@ -79,7 +79,6 @@ private:
     ///build the pipeline for getting the stain vectors from non-negative matrix factorization. Error message is placed in pointer to string.
     bool buildNMFPipeline(std::shared_ptr<StainProfile>, std::shared_ptr<std::string>);
 
-
 	///Create a text report that combines the output of the stain profile and any other reports
 	std::string generateCompleteReport() const;
 	///Create a text report summarizing the stain vector profile

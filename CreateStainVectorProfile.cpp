@@ -170,8 +170,8 @@ void CreateStainVectorProfile::init(const image::ImageHandle& image) {
 
     //Set the threshold applied before computing the stain vectors (by whichever method)
     m_preComputationThreshold = createDoubleParameter(*this,
-        "OD x100 Threshold (pre-computation)",   // Widget label
-        "Threshold applied before computing stain vectors (threshold for display is set below)",
+        "OD x100 Threshold (for computation)",   // Widget label
+        "Threshold applied to exclude pixels from stain vector computation (threshold for display is set below)",
         m_computationThresholdDefaultVal, // Initial value
         0.0,                              // minimum value
         m_computationThresholdMaxVal,     // maximum value

@@ -104,172 +104,6 @@ void BasisTransform::computeBasisVectors(cv::InputArray sourcePoints, cv::Output
     }
 }//end computeBasisVectors
 
-
-
-
-
-
-
-
-void BasisTransform::optimizeBasisVectorSigns(cv::InputArray sourcePoints, /*assume sourcePoints to be row vectors */
-    cv::InputArray inputVectors, cv::OutputArray outputVectors, const bool &useMean /*= false*/,
-    const VectorDirection &basisVecDir /*= VectorDirection::COLUMNVECTORS*/) {
-    //Check a small number of source pixels to try to get projected points with all positive elements
-    //The number of pixels to check is arbitrary, default value 10
-    cv::Mat subsampleofPixels;
-
-
-    //pick up here!!!
-
-
-    //HACK!
-    //int numTestPixels = this->GetNumTestingPixels();
-    long int numTestPixels = 0;
-
-
-
-    if (numTestPixels < 1) {
-        //Deep copy the inputVectors to the outputVectors
-        outputVectors.assign(inputVectors.getMat().clone());
-        return;
-    }
-    else {
-        CreatePixelSubsample(sourcePoints, subsampleofPixels, numTestPixels);
-    }
-
-    //Arrange the basis vectors as the columns, if they're not already
-    cv::Mat columnBasisVectors;
-    if (basisVecDir == VectorDirection::COLUMNVECTORS) {
-        //no change
-        columnBasisVectors = inputVectors.getMat().clone();
-    }
-    else if (basisVecDir == VectorDirection::ROWVECTORS) {
-        //transpose the inputVectors matrix
-        cv::transpose(inputVectors, columnBasisVectors);
-    }
-    else {
-        //invalid, but use the inputVectors as given and proceed anyway
-        columnBasisVectors = inputVectors.getMat().clone();
-    }
-
-    //Create the list of +/- options for the basis vectors (0 is +, 1 is -)
-    int numCombinations = static_cast<int>(std::pow(2, columnBasisVectors.cols));
-    cv::Mat testMultCombinations(numCombinations, columnBasisVectors.cols, cv::DataType<int>::type);
-    for (int row = 0; row < numCombinations; row++) {
-        for (int col = 0; col < columnBasisVectors.cols; col++) {
-            int newVal = (row >> col) & 1; //bit shift and mask
-            testMultCombinations.at<int>(row, col) = newVal;
-        }
-    }
-
-
-
-    //Temp file output
-    std::fstream tempOut;
-    tempOut.open("D:\\mschumaker\\projects\\Sedeen\\testData\\output\\tempout-samplepix.txt", std::fstream::out);
-    std::stringstream ss;
-
-
-    //Loop through each of the combinations
-    //Get average of subsampled points projected into each variation of the basis vectors
-    cv::Mat projAvgPointsByCombo;
-    for (int combo = 0; combo < testMultCombinations.rows; combo++) {
-        //columnBasisVectors has the basis vectors as columns
-        cv::Mat signedBasisVectors = columnBasisVectors.clone();
-        for (int vec = 0; vec < testMultCombinations.cols; vec++) {
-            double multFactor = (testMultCombinations.at<int>(combo, vec) == 0) ? 1.0 : -1.0;
-            signedBasisVectors.col(vec) *= multFactor;
-        }
-        ss << "New combo: " << std::endl;
-        ss << signedBasisVectors << std::endl;
-
-        //Project the subsample of pixels into this basis
-
-        cv::Mat projectedSamplePoints;
-        cv::gemm(subsampleofPixels, signedBasisVectors, 1, cv::Mat(), 0, projectedSamplePoints, 0);
-
-        ss << "The projected subsample of pixels: " << std::endl;
-        ss << projectedSamplePoints << std::endl;
-
-        //Use reduce to get column averages
-        cv::Mat columnAvg;
-        cv::reduce(projectedSamplePoints, columnAvg, 0, cv::ReduceTypes::REDUCE_AVG); //dim=0 to reduce to single row
-
-        projAvgPointsByCombo.push_back(columnAvg);
-
-    }//end for each +/- combination
-
-    ss << "The output, projAvgPointsByCombo: " << std::endl;
-    ss << projAvgPointsByCombo << std::endl;
-
-    //assemble 3 dimensional matrix of basis vectors with each of the testMultFactors applied
-    //cv::Mat basisVectorsWithDifferentSigns(tempVectors.rows, tempVectors.cols, testMultFactors.rows, cv::DataType<double>::type);
-
-    ////Do it with for loops until I am less sleepy
-
-    //ss << "The size of basisVectorWithDifferentSigns is: " << tempVectors.rows << ", " << tempVectors.cols << ", " << testMultFactors.rows << "." << std::endl;
-
-    //for (int combo = 0; combo < testMultFactors.rows; combo++) {
-    //    for (int vec = 0; vec < tempVectors.cols; vec++) {
-    //        double multFactor = (testMultFactors.at<int>(combo, vec) == 0) ? 1.0 : -1.0;
-    //        for (int rgb = 0; rgb < tempVectors.rows; rgb++) {
-    //            double tempVal = multFactor * tempVectors.at<double>(rgb, vec);
-
-    //            ss << tempVal << std::endl;
-
-    //            basisVectorsWithDifferentSigns.at<double>(vec, rgb, combo) = tempVal;
-    //        }
-    //    }
-    //}
-
-    //ss << "Did this work at all?" << std::endl;
-
-    //for (int combo = 0; combo < testMultFactors.rows; combo++) {
-    //    for (int vec = 0; vec < tempVectors.cols; vec++) {
-    //        for (int rgb = 0; rgb < tempVectors.rows; rgb++) {
-    //            ss << basisVectorsWithDifferentSigns.at<double>(vec, rgb, combo) << std::endl;
-    //        }
-    //    }
-    //}
-
-    //ss << basisVectorsWithDifferentSigns << std::endl;
-
-
-    //Now do something with the subsampleOfPixels
-
-
-
-
-    tempOut << ss.str() << std::endl;
-    tempOut.close();
-
-
-
-    //If the basis vectors were input as row vectors, transpose them back to that orientation
-
-    //HACK! use the columnBasisVectors as the output, until I finish writing tests
-    cv::Mat outputMatrix;
-    if (basisVecDir == VectorDirection::COLUMNVECTORS) {
-        //no change
-        outputMatrix = columnBasisVectors.clone();
-    }
-    else if (basisVecDir == VectorDirection::ROWVECTORS) {
-        //transpose the inputVectors matrix
-        cv::transpose(columnBasisVectors, outputMatrix);
-    }
-    else {
-        //invalid, but use the inputVectors as given and proceed anyway
-        outputMatrix = columnBasisVectors.clone();
-    }
-    outputVectors.assign(outputMatrix);
-}//end optimizeBasisVectorSigns
-
-
-
-
-
-
-
 bool BasisTransform::projectPoints(cv::InputArray sourcePoints, cv::OutputArray projectedPoints, const bool &subtractMean /*= false*/) const {
     cv::Mat basisVecs, means, tempProjPoints;
     //Need the basis vectors and point element means
@@ -406,36 +240,112 @@ void BasisTransform::backProjectPoints(cv::InputArray projectedPoints, cv::Outpu
     }
 }//end backProjectPoints, protected 4-argument version
 
+void BasisTransform::optimizeBasisVectorSigns(cv::InputArray sourcePoints, /*assume sourcePoints to be row vectors */
+    cv::InputArray inputVectors, cv::OutputArray outputVectors, const bool &useMean /*= false*/,
+    const VectorDirection &basisVecDir /*= VectorDirection::COLUMNVECTORS*/) {
+    //Check a small number of source pixels to try to get projected points with all positive elements
+    //The number of pixels to check is arbitrary, default value 10
+    cv::Mat subsampleofPixels;
 
+    int numTestPixels = this->GetNumTestingPixels();
+    if (numTestPixels < 1) {
+        //Deep copy the inputVectors to the outputVectors
+        outputVectors.assign(inputVectors.getMat().clone());
+        return;
+    }
+    else {
+        CreatePixelSubsample(sourcePoints, subsampleofPixels, numTestPixels);
+    }
 
+    //Arrange the basis vectors as the columns, if they're not already
+    cv::Mat columnBasisVectors;
+    if (basisVecDir == VectorDirection::COLUMNVECTORS) {
+        //no change
+        columnBasisVectors = inputVectors.getMat().clone();
+    }
+    else if (basisVecDir == VectorDirection::ROWVECTORS) {
+        //transpose the inputVectors matrix
+        cv::transpose(inputVectors, columnBasisVectors);
+    }
+    else {
+        //invalid, but use the inputVectors as given and proceed anyway
+        columnBasisVectors = inputVectors.getMat().clone();
+    }
 
+    //Create the list of +/- options for the basis vectors (0 is +, 1 is -)
+    int numCombinations = static_cast<int>(std::pow(2, columnBasisVectors.cols));
+    cv::Mat testMultCombinations(numCombinations, columnBasisVectors.cols, cv::DataType<int>::type);
+    for (int row = 0; row < numCombinations; row++) {
+        for (int col = 0; col < columnBasisVectors.cols; col++) {
+            int newVal = (row >> col) & 1; //bit shift and mask
+            testMultCombinations.at<int>(row, col) = newVal;
+        }
+    }
 
+    //Use reduce to get column averages
+    cv::Mat subsampleColumnAvg;
+    cv::reduce(subsampleofPixels, subsampleColumnAvg, 0, cv::ReduceTypes::REDUCE_AVG); //dim=0 to reduce to single row
 
+    //Loop through each of the combinations
+    //Get average of subsampled points projected into each variation of the basis vectors
+    cv::Mat projAvgPointsByCombo;
+    for (int combo = 0; combo < testMultCombinations.rows; combo++) {
+        //columnBasisVectors has the basis vectors as columns
+        cv::Mat signedBasisVectors = columnBasisVectors.clone();
+        for (int vec = 0; vec < testMultCombinations.cols; vec++) {
+            double multFactor = (testMultCombinations.at<int>(combo, vec) == 0) ? 1.0 : -1.0;
+            signedBasisVectors.col(vec) *= multFactor;
+        }
 
+        cv::Mat transposedSignedVecs;
+        cv::transpose(signedBasisVectors, transposedSignedVecs);
 
+        //Project the subsample of pixels into this basis
+        cv::Mat projectedSamplePoints;
+        projectPoints(subsampleofPixels, projectedSamplePoints, transposedSignedVecs, subsampleColumnAvg, useMean);
 
+        //Use reduce to get column averages
+        cv::Mat projColumnAvg;
+        cv::reduce(projectedSamplePoints, projColumnAvg, 0, cv::ReduceTypes::REDUCE_AVG); //dim=0 to reduce to single row
+        projAvgPointsByCombo.push_back(projColumnAvg);
+    }//end for each +/- combination
 
+    //Sum the vectors, and choose the greatest sum as the optimal combination
+    cv::Mat elementSums;
+    cv::reduce(projAvgPointsByCombo, elementSums, numCombinations, cv::ReduceTypes::REDUCE_SUM);
 
+    //Now choose which one is best
+    double min, max;
+    cv::Point min_loc, max_loc;
+    cv::minMaxLoc(elementSums, &min, &max, &min_loc, &max_loc);
 
+    //Get the second element of max_loc
+    int maxComboIndex = max_loc.y;
+    //Multiply the column-oriented basis vectors by the optimal signs
+    cv::Mat optBasisVectors = columnBasisVectors.clone();
+    for (int vec = 0; vec < testMultCombinations.cols; vec++) {
+        double multFactor = (testMultCombinations.at<int>(maxComboIndex, vec) == 0) ? 1.0 : -1.0;
+        optBasisVectors.col(vec) *= multFactor;
+    }
 
+    //If the basis vectors were input as row vectors, transpose them back to that orientation
+    cv::Mat outputMatrix;
+    if (basisVecDir == VectorDirection::COLUMNVECTORS) {
+        //no change
+        outputMatrix = optBasisVectors.clone();
+    }
+    else if (basisVecDir == VectorDirection::ROWVECTORS) {
+        //transpose the matrix to match input matrix format
+        cv::transpose(optBasisVectors, outputMatrix);
+    }
+    else {
+        //invalid. assign the input vectors to the output.
+        outputMatrix = inputVectors.getMat().clone();
+    }
+    outputVectors.assign(outputMatrix);
+}//end optimizeBasisVectorSigns
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-void BasisTransform::CreatePixelSubsample(cv::InputArray sourcePixels, cv::OutputArray subsample, const long int &numberOfPixels) {
+void BasisTransform::CreatePixelSubsample(cv::InputArray sourcePixels, cv::OutputArray subsample, const int &numberOfPixels) {
     cv::Mat tempSubsampleMat;
     if (numberOfPixels < 1) {
         return;
@@ -453,8 +363,8 @@ void BasisTransform::CreatePixelSubsample(cv::InputArray sourcePixels, cv::Outpu
     std::uniform_int_distribution<int> randSourcePixelIndex(0, sourcePixels.rows() - 1);
     //Create a list of pixel (row) indices for the randomized subset, without duplication
     std::vector<int> pixelList;
-    for (long int px = 0; px < numberOfPixels; px++) {
-        long int countLimit = 2 * numberOfPixels; //loop count limit (just in case)
+    for (int px = 0; px < numberOfPixels; px++) {
+        int countLimit = 2 * numberOfPixels; //loop count limit (just in case)
         bool newIndexFound = false;
         int attemptNumber = 0;
         while (!newIndexFound && (attemptNumber < countLimit)) {
