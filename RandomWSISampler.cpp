@@ -38,13 +38,6 @@ RandomWSISampler::RandomWSISampler(std::shared_ptr<tile::Factory> source)
     : m_sourceFactory(source),
     m_rgen((std::random_device())()) //Initialize random number generation
 {
-    //Things to try next: put the source factory in a cache
-    //create a threshold kernel, apply OD threshold factory before passing to this class
-    //create a struct to hold which tile and pixel should be accessed, the RGB vals, and the global tile index val
-    //use a SparseMat to keep the whole index map at once
-    //use foreach to get a speed boost from parallelism
-    //also parallel_for_ and whatever else can be used for parallelism
-
 }//end constructor
 
 RandomWSISampler::~RandomWSISampler(void) {
@@ -77,20 +70,6 @@ bool RandomWSISampler::ChooseRandomPixels(cv::OutputArray outputArray, const lon
     s32 numTilesOnLevel = source->getNumTiles(level);
     //The tile server pads tiles at the edges to keep all tiles the same size
     s32 numTilePixels = static_cast<s32>(source->getTileSize().width() * source->getTileSize().height());
-
-
-
-    //Ok! Start optimizing from here.
-
-
-    //Temp file output
-    std::fstream tempOut;
-    tempOut.open("D:\\mschumaker\\projects\\Sedeen\\testData\\output\\tempout.txt", std::fstream::out);
-
-
-
-
-
 
 
     //Create an initialized array to store the number of required pixels from each tile

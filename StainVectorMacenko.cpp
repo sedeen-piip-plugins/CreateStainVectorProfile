@@ -89,7 +89,7 @@ void StainVectorMacenko::ComputeStainVectors(double (&outputVectors)[9]) {
     std::copy(std::begin(tempStainVecOutput), std::end(tempStainVecOutput), std::begin(outputVectors));
 }//end single-parameter ComputeStainVectors
 
-//This overload does not have a default value for sampleSize, so it requires at two arguments
+//This overload does not have a default value for sampleSize, so it requires two arguments
 void StainVectorMacenko::ComputeStainVectors(double (&outputVectors)[9], const long int sampleSize) {
     if (this->GetSourceFactory() == nullptr) { return; }
     //Set member variables with the argument values

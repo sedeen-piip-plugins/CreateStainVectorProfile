@@ -48,8 +48,6 @@ public:
     virtual bool ChooseRandomPixels(cv::OutputArray outputMatrix, const long int numberOfPixels, const double ODthreshold,
         const int level = 0, const int focusPlane = -1, const int band = -1); //Negative indicates to use the source default values
 
-    //TODO: make a random tile and sub-tile chooser too
-
 protected:
     ///Allow derived classes to get the source factory pointer
     inline std::shared_ptr<tile::Factory> GetSourceFactory() { return m_sourceFactory; }
