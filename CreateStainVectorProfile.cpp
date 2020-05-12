@@ -588,6 +588,7 @@ bool CreateStainVectorProfile::buildMacenkoPipeline(std::shared_ptr<StainProfile
     int numHistoBins = theProfile->GetSeparationAlgorithmHistogramBinsParameter();
 
     double conv_matrix[9] = { 0.0 };
+    double sorted_matrix[9] = { 0.0 };
 
     //This pipeline only works for two stains
     if (numStains == 2) {
@@ -601,8 +602,11 @@ bool CreateStainVectorProfile::buildMacenkoPipeline(std::shared_ptr<StainProfile
         return errorVal;
     }
 
+    //Sort the stain vectors according to red content (high red OD to low red OD)
+    StainVectorMath::SortStainVectors(conv_matrix, sorted_matrix, StainVectorMath::SortOrder::DESCENDING);
+
     //Assign the output to the StainProfile 
-    bool assignCheck = theProfile->SetProfilesFromDoubleArray(conv_matrix);
+    bool assignCheck = theProfile->SetProfilesFromDoubleArray(sorted_matrix);
 
     if (!assignCheck) {
         errorMessage->assign("Could not assign the computed stain vectors to the stain profile.");
@@ -626,6 +630,7 @@ bool CreateStainVectorProfile::buildNMFPipeline(std::shared_ptr<StainProfile> th
     double compThreshold = theProfile->GetSeparationAlgorithmThresholdParameter();
 
     double conv_matrix[9] = { 0.0 };
+    double sorted_matrix[9] = { 0.0 };
 
     //This pipeline only works for two stains
     if (numStains == 2) {
@@ -639,8 +644,11 @@ bool CreateStainVectorProfile::buildNMFPipeline(std::shared_ptr<StainProfile> th
         return errorVal;
     }
 
+    //Sort the stain vectors according to red content (high red OD to low red OD)
+    StainVectorMath::SortStainVectors(conv_matrix, sorted_matrix, StainVectorMath::SortOrder::DESCENDING);
+
     //Assign the output to the StainProfile 
-    bool assignCheck = theProfile->SetProfilesFromDoubleArray(conv_matrix);
+    bool assignCheck = theProfile->SetProfilesFromDoubleArray(sorted_matrix);
 
     if (!assignCheck) {
         errorMessage->assign("Could not assign the computed stain vectors to the stain profile.");
