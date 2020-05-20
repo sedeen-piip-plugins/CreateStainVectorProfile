@@ -92,17 +92,14 @@ SET(OPTICAL_DENSITY_THRESHOLD_DIR ${${OpticalDensityThresholdName}_SOURCE_DIR})
 FetchContent_Declare(
   StainAnalysisplugin
   GIT_REPOSITORY https://github.com/sedeen-piip-plugins/StainAnalysis-plugin.git
-  GIT_TAG 26cd478479c18dfd2031ba300e294f4c3e374b64
+  GIT_TAG 4be9e69d71869026d824d7959ba30fa20e88c12e
 )
 FetchContent_GetProperties(StainAnalysisplugin)
 STRING(TOLOWER "StainAnalysisplugin" StainAnalysispluginName)
-#IF(NOT ${StainAnalysispluginName}_POPULATED)
-#  FetchContent_Populate(StainAnalysisplugin)
-#ENDIF()
-#SET(STAIN_ANALYSIS_DIR ${${StainAnalysispluginName}_SOURCE_DIR})
-
-SET(STAIN_ANALYSIS_DIR "../StainAnalysis-plugin")
-
+IF(NOT ${StainAnalysispluginName}_POPULATED)
+  FetchContent_Populate(StainAnalysisplugin)
+ENDIF()
+SET(STAIN_ANALYSIS_DIR ${${StainAnalysispluginName}_SOURCE_DIR})
 
 INCLUDE_DIRECTORIES( ${INCLUDE_DIRECTORIES} 
                      ${SEDEENSDK_INCLUDE_DIR} 

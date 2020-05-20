@@ -82,12 +82,12 @@ const std::array<float, 2> MacenkoHistogram::FindPercentileThresholdValues(cv::I
     
     //Count how many elements were added to the histogram
     cv::Scalar scalarTotal = cv::sum(theHistMat);
-    float histoCountTotal = scalarTotal[0];
+    float histoCountTotal = static_cast<float>(scalarTotal[0]);
 
     //Find the bins containing the lower and upper percentiles
-    float percentileThreshold = static_cast<float>(this->GetPercentileThreshold());
-    float lowerFraction = (percentileThreshold) / 100.0;
-    float upperFraction = (100.0 - percentileThreshold) / 100.0;
+    double percentileThreshold = this->GetPercentileThreshold();
+    float lowerFraction = static_cast<float>(percentileThreshold / 100.0);
+    float upperFraction = static_cast<float>((100.0 - percentileThreshold) / 100.0);
     bool lowerPassed(false), upperPassed(false);
     float lowerBin(-1.0), upperBin(-1.0);
     float cumulativeSum(0.0);
