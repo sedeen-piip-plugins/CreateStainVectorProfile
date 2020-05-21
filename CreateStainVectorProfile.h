@@ -115,6 +115,7 @@ private:
     ///Set the optical density threshold to omit pixels before computing stain vectors
     algorithm::DoubleParameter m_preComputationThreshold;
 
+	//TODO: switch from single region per stain to multiple (RegionListParameter)
     //Stain One
     TextFieldParameter m_nameOfStainOne;
     //RegionListParameter m_regionListStainOne;

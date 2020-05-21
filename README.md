@@ -1,10 +1,5 @@
-<<<<<<< HEAD
 <h1 align="center">Create Stain Vector Profile Plugin</h1>
 This is a Sedeen plugin to select stained regions, and generate stain vector profiles from them.
-=======
-<h1 align="center">Stain Vectors From ROI Plugin</h1>
-This is a Sedeen plugin to select stained regions using ROIs, and generate stain vector files from them.
->>>>>>> ed9c16b... WIP: initial setup of StainVectorsFromROI plugin.
 
 ## User Manual
 
